@@ -2,11 +2,11 @@ const jwt = require("jsonwebtoken");
 
 
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers["authorization"]; //bearer Token
-  const token = authHeader && authHeader.split(" ")[1];
+    const token = req.headers["authorization"]?.split(" ")[1];
+    console.log(token);
   if (token == null) return res.status(401).json({ error: "Null token" });
 
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, user) => {
+  jwt.verify(token, process.env.JWT_SECRET, (error, user) => {
     if (error) {
       return res.status(401).json({ error: "Invalid token" });
     }
