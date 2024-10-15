@@ -25,3 +25,10 @@ userId INT NOT NULL REFERENCES users(id),
 login_type VARCHAR(100) NOT NULL,
 last_action VARCHAR(100) NOT NULL
 );
+
+CREATE TABLE reset_tokens (
+id SERIAL PRIMARY KEY,
+email VARCHAR(200) NOT NULL,
+token TEXT NOT NULL,
+expiration_time TIMESTAMP NOT NULL
+);  
