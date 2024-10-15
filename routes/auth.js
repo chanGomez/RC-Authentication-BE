@@ -8,8 +8,6 @@ const router = express.Router();
 const { authenticateToken } = require("../middleware/jwt-authorization");
 const { validatePassword, validateEmail, validateUsername } = require("../middleware/validate");
 
-
-// Registration route
 router.post("/register", validatePassword, validateEmail, validateUsername, async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -35,6 +33,39 @@ router.post("/register", validatePassword, validateEmail, validateUsername, asyn
       message: "Server error during registration",
       error: error.message,
     });
+  }
+});
+
+router.post("/login", async (req, res) => {
+  const { username, email, password } = req.body;
+
+  try {
+    const findUserQuery =
+      "SELECT * FROM users WHERE username = $1 OR email = $2";
+    const userResult = await db.query(findUserQuery, [username, email]);
+
+    if (userResult.length === 0) {
+      return res.status(400).json({ message: "Username or email is incorrect" });
+    }
+
+    const user = userResult[0];
+
+    // Check if the password matches with the hashed password in the database
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(400).json({ message: "Password is incorrect" });
+    }
+
+    //Add 2 factor authentication here!!!
+
+    // Generate a JWT
+    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "5h" });
+
+    res.json("successfully logged in", "token: " + { token });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Server error during login", error: error.message });
   }
 });
 
