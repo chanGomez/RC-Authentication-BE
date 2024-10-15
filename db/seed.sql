@@ -1,11 +1,11 @@
 \c rc_authentication_be;
 
-INSERT INTO users (username, password) VALUES
-('user1', 'password123'),
-('user2', 'securepass456'),
-('user3', 'strongpwd789'),
-('user4', 'safeword321'),
-('user5', 'unbreakable555');
+INSERT INTO users (username, email, password) VALUES
+('user1', 'user1@example.com', 'password123'),
+('user2', 'user2@example.com', 'securepass456'),
+('user3', 'user3@example.com', 'strongpwd789'),
+('user4', 'user4@example.com', 'safeword321'),
+('user5', 'user5@example.com', 'unbreakable555');
 
 INSERT INTO sessions (userId, login_type, last_action) VALUES
 (1, 'web', 'login'),

@@ -5,14 +5,14 @@ const app = express();
 app.use(cors());
 app.use(express.json()); // Add this if you handle JSON requests
 
-// const authRouter = require("./routes/auth");
+const authRouter = require("./routes/auth");
 
 // Routes
 app.get("/", (req, res) => {
   res.status(200).send("RED CANARY AUTHENTICATION BACKEND!!");
 });
 
-// app.use("/auth", authRouter);
+app.use("/auth", authRouter);
 
 // Error handling middleware (optional)
 app.use("*", (err, req, res, next) => {
