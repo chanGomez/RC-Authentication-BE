@@ -1,16 +1,21 @@
 {
   "name": "rc-authentication-be",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "db:seed": "psql -f db/schema.sql && psql -d pursuit_project_tracker -f db/seed.sql"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "express": "^4.21.1"
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
