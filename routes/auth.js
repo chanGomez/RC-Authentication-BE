@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const db = require("../db/db"); // Import the PostgreSQL db from db.js
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET;
 
 //middleware
 const { authenticateToken } = require("../middleware/jwt-authorization");
@@ -59,14 +60,16 @@ router.post("/login", async (req, res) => {
     //Add 2 factor authentication here!!!
 
     // Generate a JWT
-    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "5h" });
+    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: "5h" });
 
-    res.json("successfully logged in", "token: " + { token });
+    res.json({ message: "Successfully logged in", token: token });
   } catch (error) {
     res
       .status(500)
       .json({ message: "Server error during login", error: error.message });
   }
 });
+
+
 
   module.exports = router;
