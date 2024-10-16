@@ -14,7 +14,7 @@ app.get("/", (req, res) => {
 
 app.use("/auth", authRouter);
 
-// Error handling middleware (optional)
+
 app.use("*", (err, req, res, next) => {
   res.status(500).send("Something went wrong!");
 });

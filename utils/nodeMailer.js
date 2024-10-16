@@ -1,18 +1,17 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.example.com",
+  host: "smtp.ethereal.email",
   port: 587,
-  secure: false, // Use TLS
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: "delfina.jacobson@ethereal.email",
+    pass: "m9VPxMVnGDzsV7JKSX",
   },
 });
 
 function createResetPasswordEmail(email, resetUrl) {
-  return{
-    from: process.env.EMAIL_USER,
+  return {
+    from: "delfina.jacobson@ethereal.email",
     to: email,
     subject: "Password Reset Request",
     html: `
@@ -26,7 +25,7 @@ function createResetPasswordEmail(email, resetUrl) {
 
 function lockedOutEmail(email) {
   return {
-    from: process.env.EMAIL_USER,
+    from: "delfina.jacobson@ethereal.email",
     to: email,
     subject: "Someone tried to login to your account.",
     html: `

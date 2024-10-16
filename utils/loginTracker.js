@@ -1,6 +1,4 @@
 const redisClient = require("redis").createClient();
-const nodemailer = require("nodemailer");
-
 const { transporter, lockedOutEmail } = require("./nodeMailer");
 
 redisClient.on("error", (err) => {
@@ -11,32 +9,72 @@ redisClient.connect().then(() => {
   console.log("Connected to Redis");
 });
 
+const trackFailedLoginByUser = async (userId, email) => {
+  const key = `login_attempts:${userId}`;
+  const attempts = await redisClient.get(key);
+
+  if (attempts) {
+    await redisClient.incr(key);
+
+    if (attempts >= 2) {
+      await transporter.sendMail(lockedOutEmail(email));
+      await redisClient.set(`lockedOutUser:${userId}`, "true", {EX: 21600});
+      await redisClient.del(key);
+      return { locked: true };
+    }
+  } else {
+    await redisClient.set(key, 1, "EX", 300);
+  }
+
+  return { locked: false };
+};
+
 //track failed login attempts and IP address
-const trackFailedLogin = async (userID, email, req) => {
-  const ipAddress = req.ip;
+const trackFailedLoginByIP = async (userID, ipAddress) => {
   const ipKey = `login_attempts_IP:${ipAddress}`;
   const attempts = await redisClient.get(ipKey);
 
   if (attempts) {
     await redisClient.incr(ipKey);
-    const updatedAttempts = parseInt(attempts) + 1;
 
-    if (updatedAttempts >= 3) {
-      await transporter.sendMail(lockedOutEmail(email));
-      await redisClient.set(`lockout_IP:${ipAddress}`, {status:"true", userID:userID }, { EX: 21600 }); // 6 hours
-      await redisClient.del(ipKey); // Reset IP attempts count
+    if (attempts >= 2) {
+      await redisClient.set(
+        `lockedOut_IP:${ipAddress}`,
+        { locked: "true", userID: userID },
+        { EX: 21600 }
+      );
+
+      await redisClient.del(ipKey); // Reset IP attempts count new redis key made for locked out users
       return { locked: true };
     }
   } else {
-    await redisClient.set(ipKey, 1, { EX: 900 }); // 900 seconds = 15 minutes
+    await redisClient.set(ipKey, 1, { EX: 300000 });
   }
   return { locked: false };
 };
 
 
-const isUserLocked = async (email) => {
-  const isLocked = await redisClient.get(`lockout:${email}`);
-  return isLocked;
+const isUserLockedByUserAndIP = async (userId, ipAddress) => {
+
+  const accountResult = await redisClient.get(`lockedOutUser:${userId}`);
+  const ipResult = await redisClient.get(`lockedOut_IP:${ipAddress}`);
+
+  if (accountResult) {
+    return { locked: true, message: "Account is temporarily locked." };
+  }
+
+  if (ipResult) {
+    const ipResultObj = JSON.parse(ipResult);
+    if (ipResultObj.locked == true) {
+      return { locked: true, message: "IP is temporarily blocked." };
+    }
+  }
+
+  return { locked: false };
 };
 
-module.exports = { trackFailedLogin, isUserLocked  };
+module.exports = {
+  trackFailedLoginByIP,
+  isUserLockedByUserAndIP,
+  trackFailedLoginByUser,
+};

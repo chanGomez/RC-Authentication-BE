@@ -19,11 +19,8 @@ redisClient.connect().then(() => {
 //middleware
 const { authenticateToken } = require("../middleware/jwt-authorization");
 const { validatePassword, validateEmail, validateUsername } = require("../middleware/validate");
-const { trackFailedLogin, isUserLocked } = require("../utils/loginTracker");
-const {
-  transporter,
-  createResetPasswordEmail,
-} = require("../utils/nodeMailer");
+const  { isUserLockedByUserAndIP, trackFailedLoginByUser, trackFailedLoginByIP } = require("../utils/loginTracker");
+const { transporter, createResetPasswordEmail } = require("../utils/nodeMailer");
 
 //find a way to tell if user is first time login or not
 //if first time login, then send a 2FA code to the user's email and no token will need authentication
@@ -63,16 +60,8 @@ router.post("/register", validatePassword, validateEmail, validateUsername, asyn
 
 router.post("/login", async (req, res) => {
   const { username, email, password } = req.body;
-  
- let lockedOutResult = await isUserLocked(email);
-    if (lockedOutResult) {
-      let timeLeft = await redisClient.TTL(`lockout:${email}`);
-      let timeLeftInMinutes = (timeLeft / 60).toFixed(2);
-      return {
-        success: false,
-        message: `Account is locked. You can try again in ${timeLeftInMinutes} minutes.`,
-      };
-    }
+  const ipAddress =
+    req.headers["x-forwarded-for"] || req.socket.remoteAddress;
 
   try {
     const findUserQuery =
@@ -81,16 +70,22 @@ router.post("/login", async (req, res) => {
 
     if (userResult.length === 0) {
       return res
-        .status(400)
-        .json({ message: "Username or email is incorrect" });
+      .status(400)
+      .json({ message: "Username or email is incorrect" });
     }
-
     const user = userResult[0];
+
+    // //check if user is locked out by userID and IP address
+    let lockedOutResult = await isUserLockedByUserAndIP( user.id, ipAddress);
+    if (lockedOutResult.locked === true) {
+      return res.status(400).json({ message: `${lockedOutResult.message}` });
+    }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      const result = await trackFailedLogin(findUserQuery.id, email, req);
-      if (result.locked === true) {
+      const resultUser = await trackFailedLoginByUser(user.id, email);
+      const resultIP = await trackFailedLoginByIP(user.id, ipAddress);
+      if (resultUser.locked === true || resultIP.locked === true) {
         return res
           .status(400)
           .json({
@@ -119,7 +114,6 @@ router.post("/login", async (req, res) => {
 // Logout route (Token blacklisting)
 router.post("/logout", authenticateToken, async (req, res) => {
   const token = req.user;
-  console.log(token); // Token is now available from the authenticateToken middleware
 
   if (!token) {
     return res.status(400).json({ message: "No token provided" });
@@ -167,6 +161,7 @@ router.post("/forgot-password", async (req, res) => {
     res.status(500).json({ message: "Error processing request", error: error.message });
   }
 });
+
 
 // Reset password route
 router.post("/reset-password", validatePassword, async (req, res) => {
