@@ -145,12 +145,12 @@ router.post("/forgot-password", async (req, res) => {
 
     // Generate a password reset token
     const resetToken = crypto.randomBytes(20).toString('hex');
-    const resetTokenExpiry = Date.now() + 900000 ; // Token expires in 15 mins
+    const resetTokenExpiry = new Date(Date.now() + 900000);  // Token expires in 15 mins
 
     // Store the reset token and expiry in the database
-    const updateUserQuery =
-      "UPDATE reset_tokens SET token = $1, expiration_time = $2 WHERE email = $3";
-    await db.query(updateUserQuery, [resetToken, resetTokenExpiry, email]);
+    const insertResetTokenQuery =
+      "INSERT INTO reset_tokens (email, token, expiration_time) VALUES ($1, $2, $3)";
+    await db.query(insertResetTokenQuery, [email, resetToken, resetTokenExpiry]);
 
     // Send password reset email using nodemailer
     const resetUrl = `https://authenticatorrrr.netlify.app/reset-password?token=${resetToken}`;
@@ -165,7 +165,9 @@ router.post("/forgot-password", async (req, res) => {
 
 // Reset password route
 router.post("/reset-password", validatePassword, async (req, res) => {
-  const { token, newPassword } = req.body;
+  const { password } = req.body;
+  const token = req.query.token;
+  console.log("token: " + token);
 
   try {
     // Check if the token exists and is not expired
@@ -176,10 +178,11 @@ router.post("/reset-password", validatePassword, async (req, res) => {
     if (tokenResult.length === 0) {
       return res.status(400).json({ message: "Invalid or expired token" });
     }
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Update the user's password
     const updatePasswordQuery = "UPDATE users SET password = $1 WHERE email = $2";
-    await db.query(updatePasswordQuery, [newPassword, tokenResult[0].email]);
+    await db.query(updatePasswordQuery, [hashedPassword, tokenResult[0].email]);
 
     // Clear the reset token from the database
     const clearTokenQuery = "DELETE FROM reset_tokens WHERE token = $1";
