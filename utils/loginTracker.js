@@ -6,7 +6,7 @@ redisClient.on("error", (err) => {
 });
 
 redisClient.connect().then(() => {
-  console.log("Connected to Redis");
+  console.log("Connected to Redis login tracker");
 });
 
 const trackFailedLoginByUser = async (userId, email) => {

@@ -6,13 +6,16 @@ app.use(cors());
 app.use(express.json()); // Add this if you handle JSON requests
 
 const authRouter = require("./routes/auth");
+const movieRouter = require("./routes/movies")
+const { apiLimiter } = require("./middleware/rateLimiter");
 
 // Routes
-app.get("/", (req, res) => {
+app.get("/", apiLimiter,  (req, res) => {
   res.status(200).send("RED CANARY AUTHENTICATION BACKEND!!");
 });
 
 app.use("/auth", authRouter);
+app.use("/get-movies", movieRouter);
 
 
 app.use("*", (err, req, res, next) => {

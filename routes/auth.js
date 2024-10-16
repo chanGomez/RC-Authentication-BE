@@ -1,7 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const db = require("../db/db"); // Import the PostgreSQL db from db.js
+const db = require("../db/db");
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 const crypto = require("crypto");
@@ -12,7 +12,7 @@ redisClient.on("error", (err) => {
 });
 
 redisClient.connect().then(() => {
-  console.log("Connected to Redis");
+  console.log("Connected to Redis in auth");
 });
 
 //middleware
@@ -20,6 +20,9 @@ const {
   authenticateToken,
   verifyToken,
 } = require("../middleware/jwt-authorization");
+const { 
+  loginRateLimiter
+} = require("../middleware/rateLimiter")
 const {
   validatePassword,
   validateEmail,
@@ -86,8 +89,8 @@ router.post(
   }
 );
 
-router.post("/login", async (req, res) => {
-  const { username, email, password } = req.body;
+router.post("/login", loginRateLimiter,  async (req, res) => {
+  const { email, password } = req.body;
   const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
 
   try {
