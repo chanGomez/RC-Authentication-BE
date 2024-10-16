@@ -11,27 +11,28 @@ redisClient.connect().then(() => {
   console.log("Connected to Redis");
 });
 
-
-const trackFailedLogin = async (email) => {
-  const key = `login_attempts:${email}`;
-  const attempts = await redisClient.get(key);
-  console.log("attempts", attempts);
+//track failed login attempts and IP address
+const trackFailedLogin = async (userID, email, req) => {
+  const ipAddress = req.ip;
+  const ipKey = `login_attempts_IP:${ipAddress}`;
+  const attempts = await redisClient.get(ipKey);
 
   if (attempts) {
-    await redisClient.incr(key);
+    await redisClient.incr(ipKey);
     const updatedAttempts = parseInt(attempts) + 1;
 
     if (updatedAttempts >= 3) {
       await transporter.sendMail(lockedOutEmail(email));
-      await redisClient.set(`lockout:${email}`, "true", { EX: 21600 }); // 6 hours
-      await redisClient.del(key); // Reset attempts count
+      await redisClient.set(`lockout_IP:${ipAddress}`, {status:"true", userID:userID }, { EX: 21600 }); // 6 hours
+      await redisClient.del(ipKey); // Reset IP attempts count
       return { locked: true };
     }
   } else {
-    await redisClient.set(key, 1, { EX: 900 }); // 900 seconds = 15 minutes
+    await redisClient.set(ipKey, 1, { EX: 900 }); // 900 seconds = 15 minutes
   }
   return { locked: false };
 };
+
 
 const isUserLocked = async (email) => {
   const isLocked = await redisClient.get(`lockout:${email}`);

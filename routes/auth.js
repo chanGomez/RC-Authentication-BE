@@ -19,7 +19,7 @@ redisClient.connect().then(() => {
 //middleware
 const { authenticateToken } = require("../middleware/jwt-authorization");
 const { validatePassword, validateEmail, validateUsername } = require("../middleware/validate");
-const { trackFailedLogin, isUserLocked } = require("../utils/loginAttempts");
+const { trackFailedLogin, isUserLocked } = require("../utils/loginTracker");
 const {
   transporter,
   createResetPasswordEmail,
@@ -89,7 +89,7 @@ router.post("/login", async (req, res) => {
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      const result = await trackFailedLogin(email);
+      const result = await trackFailedLogin(findUserQuery.id, email, req);
       if (result.locked === true) {
         return res
           .status(400)
