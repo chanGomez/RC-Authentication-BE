@@ -32,7 +32,6 @@ function lockedOutEmail(email) {
     html: `
         <p>There were multiple failed login attempts to your account.</p>
         <p>If this was not you, please reset your password immediately.</p>
-        <p>Click this <a href="${resetUrl}">link</a> to reset your password</p>
         <p>If it was you, please ignore this email.</p>
       `,
   };
