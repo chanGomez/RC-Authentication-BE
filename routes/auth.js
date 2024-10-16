@@ -4,23 +4,26 @@ const jwt = require("jsonwebtoken");
 const db = require("../db/db"); // Import the PostgreSQL db from db.js
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
-const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+const redisClient = require("redis").createClient();
+
+redisClient.on("error", (err) => {
+  console.error("Redis error:", err);
+});
+
+redisClient.connect().then(() => {
+  console.log("Connected to Redis");
+});
+
 
 //middleware
 const { authenticateToken } = require("../middleware/jwt-authorization");
 const { validatePassword, validateEmail, validateUsername } = require("../middleware/validate");
-
-// Configure nodemailer transporter
-const transporter = nodemailer.createTransport({
-  host: "smtp.example.com",
-  port: 587,
-  secure: false, // Use TLS
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const { trackFailedLogin, isUserLocked } = require("../utils/loginAttempts");
+const {
+  transporter,
+  createResetPasswordEmail,
+} = require("../utils/nodeMailer");
 
 //find a way to tell if user is first time login or not
 //if first time login, then send a 2FA code to the user's email and no token will need authentication
@@ -60,6 +63,16 @@ router.post("/register", validatePassword, validateEmail, validateUsername, asyn
 
 router.post("/login", async (req, res) => {
   const { username, email, password } = req.body;
+  
+ let lockedOutResult = await isUserLocked(email);
+    if (lockedOutResult) {
+      let timeLeft = await redisClient.TTL(`lockout:${email}`);
+      let timeLeftInMinutes = (timeLeft / 60).toFixed(2);
+      return {
+        success: false,
+        message: `Account is locked. You can try again in ${timeLeftInMinutes} minutes.`,
+      };
+    }
 
   try {
     const findUserQuery =
@@ -67,22 +80,34 @@ router.post("/login", async (req, res) => {
     const userResult = await db.query(findUserQuery, [username, email]);
 
     if (userResult.length === 0) {
-      return res.status(400).json({ message: "Username or email is incorrect" });
+      return res
+        .status(400)
+        .json({ message: "Username or email is incorrect" });
     }
 
     const user = userResult[0];
 
-    // Check if the password matches with the hashed password in the database
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
+      const result = await trackFailedLogin(email);
+      if (result.locked === true) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Too many failed attempts. You are locked out for 6 hours.",
+          });
+      }
       return res.status(400).json({ message: "Password is incorrect" });
     }
 
     //Add 2 factor authentication here!!!
 
-    // Generate a JWT
-      const token = jwt.sign({ username: username }, JWT_SECRET, {expiresIn: "5h"});
+    const token = jwt.sign({ username: username }, JWT_SECRET, {
+      expiresIn: "5h",
+    });
 
+    await redisClient.del(`login_attempts:${email}`);
     res.json({ message: "Successfully logged in", token: token });
   } catch (error) {
     res
@@ -134,25 +159,44 @@ router.post("/forgot-password", async (req, res) => {
     await db.query(updateUserQuery, [resetToken, resetTokenExpiry, email]);
 
     // Send password reset email using nodemailer
-    const resetUrl = `http://yourdomain.com/reset-password?token=${resetToken}`;
-    const nodeMailerMessage = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Password Reset Request",
-      html: `
-        <p>You requested a password reset</p>
-        <p>Click this <a href="${resetUrl}">link</a> to reset your password</p>
-        <p>This link will expire in 15 minutes.</p>
-        <p>If did not request a password reset, please ignore this email.</p>
-      `,
-    };
-
-    await transporter.sendMail(nodeMailerMessage);
+    const resetUrl = `https://authenticatorrrr.netlify.app/reset-password?token=${resetToken}`;
+    await transporter.sendMail(createResetPasswordEmail(email, resetUrl));
 
     res.json({ message: "Password reset link sent to your email" });
   } catch (error) {
     res.status(500).json({ message: "Error processing request", error: error.message });
   }
 });
+
+// Reset password route
+router.post("/reset-password", validatePassword, async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  try {
+    // Check if the token exists and is not expired
+    const checkTokenQuery =
+      "SELECT * FROM reset_tokens WHERE token = $1 AND expiration_time > NOW()";
+    const tokenResult = await db.query(checkTokenQuery, [token]);
+
+    if (tokenResult.length === 0) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    // Update the user's password
+    const updatePasswordQuery = "UPDATE users SET password = $1 WHERE email = $2";
+    await db.query(updatePasswordQuery, [newPassword, tokenResult[0].email]);
+
+    // Clear the reset token from the database
+    const clearTokenQuery = "DELETE FROM reset_tokens WHERE token = $1";
+    await db.query(clearTokenQuery, [token]);
+
+    res.json({ message: "Password reset successful" });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Server error during password reset", error: error.message });
+  }
+});
+
 
 module.exports = router;
