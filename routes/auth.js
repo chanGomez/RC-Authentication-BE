@@ -49,8 +49,8 @@ router.post(
 
     try {
       const userExistsQuery =
-        "SELECT * FROM users WHERE username = $1 OR email = $2";
-      const userExists = await db.query(userExistsQuery, [username, email]);
+        "SELECT * FROM users WHERE email = $1";
+      const userExists = await db.query(userExistsQuery, [email]);
 
       if (userExists.length > 0) {
         return res.status(400).json({ message: "User already exists" });
@@ -88,12 +88,12 @@ router.post(
 
 router.post("/login", async (req, res) => {
   const { username, email, password } = req.body;
-  const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+  const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
 
   try {
     const findUserQuery =
-      "SELECT * FROM users WHERE username = $1 OR email = $2";
-    const userResult = await db.query(findUserQuery, [username, email]);
+      "SELECT * FROM users WHERE email = $1";
+    const userResult = await db.query(findUserQuery, [email]);
 
     if (userResult.length === 0) {
       return res

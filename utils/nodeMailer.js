@@ -35,4 +35,22 @@ function lockedOutEmail(email) {
       `,
   };
 }
-module.exports = { transporter, createResetPasswordEmail, lockedOutEmail };
+
+function newBrowserAlert(email) {
+  return {
+    from: "delfina.jacobson@ethereal.email",
+    to: email,
+    subject: "Someone tried to login to your account.",
+    html: `
+        <p>There were multiple failed login attempts to your account.</p>
+        <p>If this was not you, please reset your password immediately.</p>
+        <p>If it was you, please ignore this email.</p>
+      `,
+  };
+}
+module.exports = {
+  transporter,
+  createResetPasswordEmail,
+  lockedOutEmail,
+  newBrowserAlert,
+};
