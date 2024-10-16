@@ -15,53 +15,80 @@ redisClient.connect().then(() => {
   console.log("Connected to Redis");
 });
 
-
 //middleware
-const { authenticateToken } = require("../middleware/jwt-authorization");
-const { validatePassword, validateEmail, validateUsername } = require("../middleware/validate");
-const  { isUserLockedByUserAndIP, trackFailedLoginByUser, trackFailedLoginByIP } = require("../utils/loginTracker");
-const { transporter, createResetPasswordEmail } = require("../utils/nodeMailer");
+const {
+  authenticateToken,
+  verifyToken,
+} = require("../middleware/jwt-authorization");
+const {
+  validatePassword,
+  validateEmail,
+  validateUsername,
+} = require("../middleware/validate");
+const {
+  isUserLockedByUserAndIP,
+  trackFailedLoginByUser,
+  trackFailedLoginByIP,
+} = require("../utils/loginTracker");
+const {
+  transporter,
+  createResetPasswordEmail,
+} = require("../utils/nodeMailer");
 
 //find a way to tell if user is first time login or not
 //if first time login, then send a 2FA code to the user's email and no token will need authentication
 //if not first time login, then send a 2FA code to the user's email and a token will need authentication
 
-router.post("/register", validatePassword, validateEmail, validateUsername, async (req, res) => {
-  const { username, email, password } = req.body;
+router.post(
+  "/register",
+  validatePassword,
+  validateEmail,
+  validateUsername,
+  async (req, res) => {
+    const { username, email, password } = req.body;
 
-  try {
-    const userExistsQuery = "SELECT * FROM users WHERE username = $1 OR email = $2";
-    const userExists = await db.query(userExistsQuery, [username, email]);
+    try {
+      const userExistsQuery =
+        "SELECT * FROM users WHERE username = $1 OR email = $2";
+      const userExists = await db.query(userExistsQuery, [username, email]);
 
-    if (userExists.length > 0) {
-      return res.status(400).json({ message: "User already exists" });
+      if (userExists.length > 0) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+      console.log(userExists);
+
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const insertUserQuery =
+        "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)";
+      await db.query(insertUserQuery, [username, email, hashedPassword]);
+      const getNewUser =
+        "SELECT * FROM users WHERE email = $1";
+      const user = await db.query(getNewUser, [email]);
+
+    const token = jwt.sign({ user: user.id }, JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+      res
+        .status(201)
+        .json({
+          message: "New User registered successfully: " + username,
+          token: token,
+        });
+    } catch (error) {
+      res.status(500).json({
+        message: "Server error during registration",
+        error: error.message,
+      });
     }
-    console.log(userExists);
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const insertUserQuery =
-      "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)";
-    await db.query(insertUserQuery, [username, email, hashedPassword]);
-
-    const token = jwt.sign({ username: username}, JWT_SECRET, {
-      expiresIn: "5h",
-    });
-
-    res.status(201).json({ message: "New User registered successfully: " + username, token: token });
-  } catch (error) {
-    res.status(500).json({
-      message: "Server error during registration",
-      error: error.message,
-    });
   }
-});
+);
 
 router.post("/login", async (req, res) => {
   const { username, email, password } = req.body;
-  const ipAddress =
-    req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+  const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
 
   try {
     const findUserQuery =
@@ -70,13 +97,13 @@ router.post("/login", async (req, res) => {
 
     if (userResult.length === 0) {
       return res
-      .status(400)
-      .json({ message: "Username or email is incorrect" });
+        .status(400)
+        .json({ message: "Username or email is incorrect" });
     }
     const user = userResult[0];
 
     // //check if user is locked out by userID and IP address
-    let lockedOutResult = await isUserLockedByUserAndIP( user.id, ipAddress);
+    let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
     if (lockedOutResult.locked === true) {
       return res.status(400).json({ message: `${lockedOutResult.message}` });
     }
@@ -86,23 +113,21 @@ router.post("/login", async (req, res) => {
       const resultUser = await trackFailedLoginByUser(user.id, email);
       const resultIP = await trackFailedLoginByIP(user.id, ipAddress);
       if (resultUser.locked === true || resultIP.locked === true) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Too many failed attempts. You are locked out for 6 hours.",
-          });
+        return res.status(400).json({
+          message: "Too many failed attempts. You are locked out for 6 hours.",
+        });
       }
       return res.status(400).json({ message: "Password is incorrect" });
     }
 
     //Add 2 factor authentication here!!!
 
-    const token = jwt.sign({ username: username }, JWT_SECRET, {
-      expiresIn: "5h",
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+      expiresIn: "1h",
     });
-
-    await redisClient.del(`login_attempts:${email}`);
+    //store token in redis
+    await redisClient.set(`session_token:${user.id}`, token, { EX: 3600 });
+    await redisClient.del(`login_attempts:${user.id}`);
     res.json({ message: "Successfully logged in", token: token });
   } catch (error) {
     res
@@ -112,8 +137,9 @@ router.post("/login", async (req, res) => {
 });
 
 // Logout route (Token blacklisting)
-router.post("/logout", authenticateToken, async (req, res) => {
+router.post("/logout", verifyToken, async (req, res) => {
   const token = req.user;
+  console.log(token);
 
   if (!token) {
     return res.status(400).json({ message: "No token provided" });
@@ -121,12 +147,14 @@ router.post("/logout", authenticateToken, async (req, res) => {
 
   try {
     // Add token to the blacklist
-    const insertTokenQuery = 'INSERT INTO token_blacklist (token) VALUES ($1)';
+    const insertTokenQuery = "INSERT INTO token_blacklist (token) VALUES ($1)";
     await db.query(insertTokenQuery, [token]);
 
     res.json({ message: "Logged out successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error logging out", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error logging out", error: error.message });
   }
 });
 
@@ -144,13 +172,17 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     // Generate a password reset token
-    const resetToken = crypto.randomBytes(20).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 900000);  // Token expires in 15 mins
+    const resetToken = crypto.randomBytes(20).toString("hex");
+    const resetTokenExpiry = new Date(Date.now() + 900000); // Token expires in 15 mins
 
     // Store the reset token and expiry in the database
     const insertResetTokenQuery =
       "INSERT INTO reset_tokens (email, token, expiration_time) VALUES ($1, $2, $3)";
-    await db.query(insertResetTokenQuery, [email, resetToken, resetTokenExpiry]);
+    await db.query(insertResetTokenQuery, [
+      email,
+      resetToken,
+      resetTokenExpiry,
+    ]);
 
     // Send password reset email using nodemailer
     const resetUrl = `https://authenticatorrrr.netlify.app/reset-password?token=${resetToken}`;
@@ -158,10 +190,11 @@ router.post("/forgot-password", async (req, res) => {
 
     res.json({ message: "Password reset link sent to your email" });
   } catch (error) {
-    res.status(500).json({ message: "Error processing request", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error processing request", error: error.message });
   }
 });
-
 
 // Reset password route
 router.post("/reset-password", validatePassword, async (req, res) => {
@@ -181,7 +214,8 @@ router.post("/reset-password", validatePassword, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Update the user's password
-    const updatePasswordQuery = "UPDATE users SET password = $1 WHERE email = $2";
+    const updatePasswordQuery =
+      "UPDATE users SET password = $1 WHERE email = $2";
     await db.query(updatePasswordQuery, [hashedPassword, tokenResult[0].email]);
 
     // Clear the reset token from the database
@@ -192,9 +226,11 @@ router.post("/reset-password", validatePassword, async (req, res) => {
   } catch (error) {
     res
       .status(500)
-      .json({ message: "Server error during password reset", error: error.message });
+      .json({
+        message: "Server error during password reset",
+        error: error.message,
+      });
   }
 });
-
 
 module.exports = router;
