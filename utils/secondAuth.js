@@ -1,6 +1,4 @@
 const speakeasy = require("speakeasy");
-
-const speakeasy = require("speakeasy");
 const QRCode = require("qrcode");
 
 const registerTOTP = (username) => {

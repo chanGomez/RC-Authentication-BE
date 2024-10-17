@@ -14,7 +14,10 @@ const {
 const { apiLimiter} = require("../middleware/rateLimiter")
 
 router.get( "/", verifyToken, async (req, res) => {
-      res.status(200).send("movie route: with token");
+      res.status(200).send("movie route! can only be reached with valid token");
 })
+router.get("/no-token", verifyToken, async (req, res) => {
+  res.status(200).send("movie route!!! no token needed");
+});
 
 module.exports = router;

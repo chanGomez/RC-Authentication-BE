@@ -6,8 +6,6 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 const crypto = require("crypto");
 const redisClient = require("redis").createClient();
-const speakeasy = require("speakeasy");
-const QRCode = require("qrcode");
 
 redisClient.on("error", (err) => {
   console.error("Redis error:", err);
@@ -40,9 +38,13 @@ const {
   createResetPasswordEmail,
 } = require("../utils/nodeMailer");
 
+const {validateTOTP, registerTOTP} = require("../utils/secondAuth")
+
 //find a way to tell if user is first time login or not
 //if first time login, then send a 2FA code to the user's email and no token will need authentication
 //if not first time login, then send a 2FA code to the user's email and a token will need authentication
+
+const { registerTOTP } = require("./secondAuth"); // Import the TOTP function
 
 router.post(
   "/register",
@@ -59,7 +61,6 @@ router.post(
       if (userExists.length > 0) {
         return res.status(400).json({ message: "User already exists" });
       }
-      console.log(userExists);
 
       // Hash the password
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -67,18 +68,22 @@ router.post(
       const insertUserQuery =
         "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)";
       await db.query(insertUserQuery, [username, email, hashedPassword]);
+
       const getNewUser = "SELECT * FROM users WHERE email = $1";
       const user = await db.query(getNewUser, [email]);
 
-      //2 factor auth
+      //2Factor Auth
+      const { qrCode, manualKey } = await registerTOTP(username);
 
       const token = jwt.sign({ user: user.id }, JWT_SECRET, {
         expiresIn: "1h",
       });
 
       res.status(201).json({
-        message: "New User registered successfully: " + username,
+        message: "User registered successfully: " + username,
         token: token,
+        qrCode: qrCode, // Return QR code for user to scan
+        manualKey: manualKey, // Provide manual key as fallback
       });
     } catch (error) {
       res.status(500).json({
@@ -89,13 +94,13 @@ router.post(
   }
 );
 
-router.post("/login", loginRateLimiter,  async (req, res) => {
-  const { email, password } = req.body;
-  const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
+router.post("/login", loginRateLimiter, async (req, res) => {
+  const { email, password, token } = req.body; 
+  const ipAddress =
+    req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
 
   try {
-    const findUserQuery =
-      "SELECT * FROM users WHERE email = $1";
+    const findUserQuery = "SELECT * FROM users WHERE email = $1";
     const userResult = await db.query(findUserQuery, [email]);
 
     if (userResult.length === 0) {
@@ -105,7 +110,7 @@ router.post("/login", loginRateLimiter,  async (req, res) => {
     }
     const user = userResult[0];
 
-    // //check if user is locked out by userID and IP address
+    // Check if the user is locked out by userID and IP address
     let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
     if (lockedOutResult.locked === true) {
       return res.status(400).json({ message: `${lockedOutResult.message}` });
@@ -123,17 +128,23 @@ router.post("/login", loginRateLimiter,  async (req, res) => {
       return res.status(400).json({ message: "Password is incorrect" });
     }
 
-    //Add 2 factor authentication here!!!
-    
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+    //2Factor Auth
+    if (user.totpSecret) {
+      const totpValid = validateTOTP(user.username, token);
+
+      if (!totpValid) {
+        return res.status(400).json({ message: "Invalid TOTP token" });
+      }
+    }
+
+    const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
       expiresIn: "1h",
     });
-    console.log(token);
-    
-    //store token in redis
-    await redisClient.set(`session_token:${user.id}`, token, { EX: 3600 });
+
+    await redisClient.set(`session_token:${user.id}`, jwtToken, { EX: 3600 });
     await redisClient.del(`login_attempts:${user.id}`);
-    res.json({ message: "Successfully logged in", token: token });
+
+    res.json({ message: "Successfully logged in", token: jwtToken });
   } catch (error) {
     res
       .status(500)
@@ -141,7 +152,6 @@ router.post("/login", loginRateLimiter,  async (req, res) => {
   }
 });
 
-// Logout route (Token blacklisting)
 router.post("/logout", verifyToken, async (req, res) => {
   const token = req.user;
   console.log(token);
@@ -151,7 +161,6 @@ router.post("/logout", verifyToken, async (req, res) => {
   }
 
   try {
-    // Add token to the blacklist
     const insertTokenQuery = "INSERT INTO token_blacklist (token) VALUES ($1)";
     await db.query(insertTokenQuery, [token]);
 
@@ -163,12 +172,10 @@ router.post("/logout", verifyToken, async (req, res) => {
   }
 });
 
-// Forgot password route
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
   try {
-    // Check if the user exists
     const findUserQuery = "SELECT * FROM users WHERE email = $1";
     const userResult = await db.query(findUserQuery, [email]);
 
@@ -176,11 +183,9 @@ router.post("/forgot-password", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Generate a password reset token
     const resetToken = crypto.randomBytes(20).toString("hex");
     const resetTokenExpiry = new Date(Date.now() + 900000); // Token expires in 15 mins
 
-    // Store the reset token and expiry in the database
     const insertResetTokenQuery =
       "INSERT INTO reset_tokens (email, token, expiration_time) VALUES ($1, $2, $3)";
     await db.query(insertResetTokenQuery, [
@@ -189,7 +194,6 @@ router.post("/forgot-password", async (req, res) => {
       resetTokenExpiry,
     ]);
 
-    // Send password reset email using nodemailer
     const resetUrl = `https://authenticatorrrr.netlify.app/reset-password?token=${resetToken}`;
     await transporter.sendMail(createResetPasswordEmail(email, resetUrl));
 
@@ -208,7 +212,6 @@ router.post("/reset-password", validatePassword, async (req, res) => {
   console.log("token: " + token);
 
   try {
-    // Check if the token exists and is not expired
     const checkTokenQuery =
       "SELECT * FROM reset_tokens WHERE token = $1 AND expiration_time > NOW()";
     const tokenResult = await db.query(checkTokenQuery, [token]);
@@ -218,12 +221,10 @@ router.post("/reset-password", validatePassword, async (req, res) => {
     }
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Update the user's password
     const updatePasswordQuery =
       "UPDATE users SET password = $1 WHERE email = $2";
     await db.query(updatePasswordQuery, [hashedPassword, tokenResult[0].email]);
 
-    // Clear the reset token from the database
     const clearTokenQuery = "DELETE FROM reset_tokens WHERE token = $1";
     await db.query(clearTokenQuery, [token]);
 
