@@ -45,8 +45,6 @@ const {validateTOTP, registerTOTP} = require("../utils/secondAuth")
 //if first time login, then send a 2FA code to the user's email and no token will need authentication
 //if not first time login, then send a 2FA code to the user's email and a token will need authentication
 
-const { registerTOTP } = require("./secondAuth"); // Import the TOTP function
-
 router.post(
   "/register",
   validatePassword,
