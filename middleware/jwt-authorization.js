@@ -40,10 +40,13 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("line 43:", decoded)
 
     let redisToken;
     try {
       redisToken = await redisClient.get(`session_token:${decoded.userId}`);
+    console.log("line 48:", redisToken);
+
     } catch (err) {
       return res
         .status(500)
@@ -52,7 +55,7 @@ const verifyToken = async (req, res, next) => {
             "Internal server error while accessing Redis for session token",
         });
     }
-
+    console.log("line 58:", redisToken);
     if (!redisToken) {
       return res.status(401).json({ message: "Session expired or token invalid" });
     }
@@ -71,7 +74,7 @@ const verifyToken = async (req, res, next) => {
     if (failedAttempts > MAX_FAILED_ATTEMPTS) {
       return res.status(429).json({
         message: "Too many failed attempts. Please try again later.",
-        retryAfter: BLOCK_DURATION,
+        retryAfter: "15 minutes",
       });
     }
 

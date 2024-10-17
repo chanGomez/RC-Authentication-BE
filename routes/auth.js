@@ -6,6 +6,8 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 const crypto = require("crypto");
 const redisClient = require("redis").createClient();
+const speakeasy = require("speakeasy");
+const QRCode = require("qrcode");
 
 redisClient.on("error", (err) => {
   console.error("Redis error:", err);
@@ -51,8 +53,7 @@ router.post(
     const { username, email, password } = req.body;
 
     try {
-      const userExistsQuery =
-        "SELECT * FROM users WHERE email = $1";
+      const userExistsQuery = "SELECT * FROM users WHERE email = $1";
       const userExists = await db.query(userExistsQuery, [email]);
 
       if (userExists.length > 0) {
@@ -66,20 +67,19 @@ router.post(
       const insertUserQuery =
         "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)";
       await db.query(insertUserQuery, [username, email, hashedPassword]);
-      const getNewUser =
-        "SELECT * FROM users WHERE email = $1";
+      const getNewUser = "SELECT * FROM users WHERE email = $1";
       const user = await db.query(getNewUser, [email]);
 
-    const token = jwt.sign({ user: user.id }, JWT_SECRET, {
-      expiresIn: "1h",
-    });
+      //2 factor auth
 
-      res
-        .status(201)
-        .json({
-          message: "New User registered successfully: " + username,
-          token: token,
-        });
+      const token = jwt.sign({ user: user.id }, JWT_SECRET, {
+        expiresIn: "1h",
+      });
+
+      res.status(201).json({
+        message: "New User registered successfully: " + username,
+        token: token,
+      });
     } catch (error) {
       res.status(500).json({
         message: "Server error during registration",
@@ -124,10 +124,12 @@ router.post("/login", loginRateLimiter,  async (req, res) => {
     }
 
     //Add 2 factor authentication here!!!
-
+    
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
       expiresIn: "1h",
     });
+    console.log(token);
+    
     //store token in redis
     await redisClient.set(`session_token:${user.id}`, token, { EX: 3600 });
     await redisClient.del(`login_attempts:${user.id}`);
