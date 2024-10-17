@@ -1,24 +1,24 @@
 const speakeasy = require("speakeasy");
 const QRCode = require("qrcode");
 
-const registerTOTP = (username) => {
+const registerTOTP = (email) => {
   try {
     const secret = speakeasy.generateSecret({
-      name: "TestApp (" + username + ")",
+      name: "TestApp (" + email + ")",
       issuer: "TestApp",
       algorithm: "sha1",
     });
 
-    const user = getUserByUsername(username); 
-    user.totpSecret = secret.base32; 
+    const user = getUserByUsername(email);
+    user.totpSecret = secret.base32;
     saveUser(user);
 
-    const otpauthURL = secret.otpauth_url; 
+    const otpauthURL = secret.otpauth_url;
     return QRCode.toDataURL(otpauthURL)
       .then((qrCode) => {
         return {
-          qrCode, 
-          manualKey: secret.base32, 
+          qrCode,
+          manualKey: secret.base32,
         };
       })
       .catch((err) => {
@@ -29,15 +29,15 @@ const registerTOTP = (username) => {
   }
 };
 
-const validateTOTP = (username, token) => {
+const validateTOTP = (email, token) => {
   try {
-    const user = getUserByUsername(username); 
+    const user = getUserByUsername(email);
 
     const isValid = speakeasy.totp.verify({
-      secret: user.totpSecret, 
+      secret: user.totpSecret,
       encoding: "base32",
-      token: token, 
-      window: 2, 
+      token: token,
+      window: 2,
       algorithm: "sha1",
     });
 

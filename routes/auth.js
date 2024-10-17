@@ -73,7 +73,7 @@ router.post(
       const user = await db.query(getNewUser, [email]);
 
       //2Factor Auth
-      const { qrCode, manualKey } = await registerTOTP(username);
+      const { qrCode, manualKey } = await registerTOTP(email);
 
       const token = jwt.sign({ user: user.id }, JWT_SECRET, {
         expiresIn: "1h",
@@ -130,7 +130,7 @@ router.post("/login", loginRateLimiter, async (req, res) => {
 
     //2Factor Auth
     if (user.totpSecret) {
-      const totpValid = validateTOTP(user.username, token);
+      const totpValid = validateTOTP(user.email, token);
 
       if (!totpValid) {
         return res.status(400).json({ message: "Invalid TOTP token" });
