@@ -1,38 +1,33 @@
 const geoip = require("geoip-lite");
-const redisClient = require("redis").createClient();
 const { transporter, newBrowserAlert } = require("./nodeMailer");
+const db = require("../db"); // Assuming db is the database connection module
 
-redisClient.on("error", (err) => {
-  console.error("Redis error:", err);
-});
-
-redisClient.connect().then(() => {
-  console.log("Connected to Redis");
-});
-
-const checkNewLogin = async (req, res, next) => {
-const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
+const checkNewLoginByIP = async (req, res, next) => {
+  const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
   const { email } = req.body;
-  const key = `userIP:${email}`;
-
 
   try {
-    const storedIPs = await redisClient.sMembers(key);
     const geo = geoip.lookup(ipAddress);
     const ipInfo = `${ipAddress}|${geo ? geo.country : "unknown"}`;
 
+    const userExistsQuery = "SELECT * FROM users WHERE email = $1";
+    const user = await db.query(userExistsQuery, [email]);
+    const query = "SELECT ip_address FROM sessions_by_ip WHERE userId = $1";
+    const values = [user.id];
+    const result = await db.query(query, values);
 
-    if (!storedIPs.includes(ipInfo)) {
-        //new browser alert to email
+    if (!result.rows.some(row => row.ip_address === ipInfo)) {
+      // new browser alert to email
       await transporter.sendMail(newBrowserAlert(email));
-      await redisClient.sAdd(key, ipInfo);
+      const insertQuery = "INSERT INTO sessions_by_ip (userId, ip_address) VALUES ($1, $2)";
+      await db.query(insertQuery, [user.id, ipInfo]);
       return true;
     }
 
-    return false;
+    next();
   } catch (err) {
-    return res.status(401).json({ error: err, message: "Sever error during login IP address check" });
+    return res.status(401).json({ error: err, message: "Server error during login IP address check" });
   }
 };
 
-module.exports = { checkNewLogin };
+module.exports = { checkNewLoginByIP };

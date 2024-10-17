@@ -16,6 +16,7 @@ redisClient.connect().then(() => {
 });
 
 //middleware
+const { checkNewLoginByIP } = require("../middleware/newLoginIP")
 const {
   authenticateToken,
   verifyToken,
@@ -75,9 +76,10 @@ router.post(
       //2Factor Auth
       const { qrCode, manualKey } = await registerTOTP(email);
 
-      const token = jwt.sign({ user: user.id }, JWT_SECRET, {
-        expiresIn: "1h",
-      });
+      //should I be issuing token for registration?
+      // const token = jwt.sign({ user: user.id }, JWT_SECRET, {
+      //   expiresIn: "1h",
+      // });
 
       res.status(201).json({
         message: "User registered successfully: " + username,
@@ -94,7 +96,7 @@ router.post(
   }
 );
 
-router.post("/login", loginRateLimiter, async (req, res) => {
+router.post("/login", loginRateLimiter, checkNewLoginByIP, async (req, res) => {
   const { email, password, token } = req.body; 
   const ipAddress =
     req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
