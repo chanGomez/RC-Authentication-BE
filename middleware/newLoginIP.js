@@ -1,6 +1,6 @@
 const geoip = require("geoip-lite");
 const { transporter, newBrowserAlert } = require("../utils/nodeMailer");
-const db = require("../db"); // Assuming db is the database connection module
+const db = require("../db/db.js"); // Assuming db is the database connection module
 
 const checkNewLoginByIP = async (req, res, next) => {
   const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;

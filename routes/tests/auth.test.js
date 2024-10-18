@@ -1,6 +1,6 @@
 const request = require("supertest");
 const server = require("../../server"); // Assuming your express server is exported here
-const db = require("../../db"); // Mock your database connection
+const db = require("../../db/db.js"); // Mock your database connection
 const bcrypt = require("bcrypt");
 const { registerTOTP } = require("../../uitls/secondAuth.js"); // Mock your TOTP function
 
@@ -20,21 +20,16 @@ describe("POST /register", () => {
       password: "password123",
     };
 
-    // Mock the database response to check if user already exists
     db.query.mockResolvedValueOnce([]); // No user found
 
-    // Mock bcrypt hash function
     bcrypt.hash.mockResolvedValueOnce("hashedPassword123");
 
-    // Mock database insert query
     db.query.mockResolvedValueOnce();
 
-    // Mock database getNewUser query
     db.query.mockResolvedValueOnce([
       { id: 1, username: "testuser", email: "testuser@test.com" },
     ]);
 
-    // Mock TOTP registration
     registerTOTP.mockResolvedValueOnce({
       qrCode: "fakeQrCode",
       manualKey: "fakeManualKey",
