@@ -18,11 +18,11 @@ token TEXT NOT NULL,
 blacklisted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE sessions_by_ip(
+CREATE TABLE sessions_by_ip (
 id SERIAL PRIMARY KEY,
 userId INT NOT NULL REFERENCES users(id),
 login_attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-ip_address VARCHAR(100),
+ip_address VARCHAR(100)
 );
 
 CREATE TABLE reset_tokens (

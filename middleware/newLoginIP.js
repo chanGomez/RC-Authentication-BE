@@ -9,18 +9,38 @@ const checkNewLoginByIP = async (req, res, next) => {
   try {
     const geo = geoip.lookup(ipAddress);
     const ipInfo = `${ipAddress}|${geo ? geo.country : "unknown"}`;
+    console.log("here")
 
-    const userExistsQuery = "SELECT * FROM users WHERE email = $1";
-    const user = await db.query(userExistsQuery, [email]);
+      const userExistsQuery = "SELECT * FROM users WHERE email = $1";
+      const userExists = await db.query(userExistsQuery, [email]);
+
+      if (userExists.length == 0) {
+        return res.status(400).json({ message: "Email is not registered." });
+      }
+
+    if(user.length == 0){
+    return res
+      .status(401)
+      .json({
+        error: err,
+        message: "Email not registered to the site.",
+      });
+    }
+    console.log("here");
+
     const query = "SELECT ip_address FROM sessions_by_ip WHERE userId = $1";
     const values = [user.id];
     const result = await db.query(query, values);
 
     if (!result.rows.some(row => row.ip_address === ipInfo)) {
       // new browser alert to email
+    console.log("here")
+
       await transporter.sendMail(newBrowserAlert(email));
-      const insertQuery = "INSERT INTO sessions_by_ip (userId, ip_address) VALUES ($1, $2)";
-      await db.query(insertQuery, [user.id, ipInfo]);
+         const currentTimeStamp = new Date(Date.now() + 900000);
+      const insertQuery =
+        "INSERT INTO sessions_by_ip (userId, login_attempt_time, ip_address) VALUES ($1, $2, $3)";
+      await db.query(insertQuery, [user.id, currentTimeStamp, ipInfo]);
       return true;
     }
 

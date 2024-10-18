@@ -1,7 +1,7 @@
 const speakeasy = require("speakeasy");
 const QRCode = require("qrcode");
 
-const registerTOTP = (email) => {
+async function registerTOTP(email) {
   try {
     const secret = speakeasy.generateSecret({
       name: "TestApp (" + email + ")",

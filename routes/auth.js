@@ -61,6 +61,16 @@ router.post(
         return res.status(400).json({ message: "User already exists" });
       }
 
+      //notes to help with unit testing---
+      //1.
+      //helper function to see if user exists - getUser
+      //if true
+      //return error
+      //else function create user
+      //2.
+      //query dictionary
+      
+
       // Hash the password
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -75,9 +85,9 @@ router.post(
       const { qrCode, manualKey } = await registerTOTP(email);
 
       //-------should I be issuing token for registration?
-      // const token = jwt.sign({ user: user.id }, JWT_SECRET, {
-      //   expiresIn: "1h",
-      // });
+      const token = jwt.sign({ user: user.id }, JWT_SECRET, {
+        expiresIn: "1h",
+      });
 
       res.status(201).json({
         message: "User registered successfully: " + username,
@@ -94,7 +104,7 @@ router.post(
   }
 );
 
-router.post("/login", loginRateLimiter, checkNewLoginByIP, async (req, res) => {
+router.post("/login", loginRateLimiter, checkNewLoginByIP, verifyToken,  async (req, res) => {
   const { email, password, token } = req.body; 
   const ipAddress =
     req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
