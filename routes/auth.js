@@ -74,7 +74,7 @@ router.post(
       //2Factor Auth
       const { qrCode, manualKey } = await registerTOTP(email);
 
-      //should I be issuing token for registration?
+      //-------should I be issuing token for registration?
       // const token = jwt.sign({ user: user.id }, JWT_SECRET, {
       //   expiresIn: "1h",
       // });
