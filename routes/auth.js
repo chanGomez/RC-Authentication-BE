@@ -69,11 +69,9 @@ router.post(
         "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)";
       await db.query(insertUserQuery, [username, email, hashedPassword]);
 
-      //should I use email instead of user id?
-      const getNewUser = "SELECT * FROM users WHERE email = $1";
-      const user = await db.query(getNewUser, [email]);
-
-
+      res.status(201).json({
+        message: "User registered  " + username,
+      });
     } catch (error) {
       res.status(500).json({
         message: "Server error during registration",
@@ -91,20 +89,15 @@ router.post("/enable2fa", async (req, res) => {
     // Generate TOTP Secret for the user
     const { qrCode, manualKey } = await registerTOTP(email);
 
-    const jwtToken = jwt.sign({ user: user.id }, JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
     res.status(201).json({
-      message: "User registered successfully with 2 factor auth: " + username,
-      jwtToken: jwtToken,
+      message: "User registered, qrcode created " + email,
       qrCode: qrCode, // Return QR code for user to scan
       manualKey: manualKey, // Provide manual key as fallback
     });
   } catch (error) {
     res
       .status(500)
-      .json({ message: "Error logging out", error: error.message });
+      .json({ message: "Error during qrcode creation", error: error.message });
   }
 });
 
@@ -150,7 +143,7 @@ router.post(
       //once user logins the login attempts gets deleted
       await redisClient.del(`login_attempts:${user.id}`);
       return res.json({
-        message: "Successfully logged with email and password"
+        message: "Successfully logged with email and password",
       });
     } catch (error) {
       res
@@ -165,11 +158,11 @@ router.post("/verify2fa", async (req, res) => {
   const { email, totpToken } = req.body;
 
   try {
-    const result = await validateTOTP(email, token);
-    console.log(result);
+    const findUserQuery = "SELECT * FROM users WHERE email = $1";
+    const userResult = await db.query(findUserQuery, [email]);
 
     // Check if the user has TOTP enabled by checking their totpSecret in the database
-    if (user.totpSecret) {
+    if (userResult.totpSecret) {
       // Validate the TOTP token
       const totpValid = validateTOTP(email, totpToken); // Use the provided token
 
@@ -178,17 +171,17 @@ router.post("/verify2fa", async (req, res) => {
       }
     }
 
-    const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
+    const jwtToken = jwt.sign({ userId: userResult.id }, JWT_SECRET, {
       expiresIn: "1h",
     });
 
     //toke session started for session management
-    await redisClient.set(`session_token:${user.id}`, jwtToken, { EX: 3600 });
+    await redisClient.set(`session_token:${userResult.id}`, jwtToken, { EX: 3600 });
     res.json({ message: "sign in successful ", jwtToken: jwtToken });
   } catch (error) {
     res
       .status(500)
-      .json({ message: "Error logging out", error: error.message });
+      .json({ message: "Error during 2 factor verify", error: error.message });
   }
 });
 
