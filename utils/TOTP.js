@@ -33,7 +33,7 @@ async function validateTOTP(email, token) {
   try {
     const user = (
       await db.query("SELECT * FROM users WHERE email = $1", [email])
-    ).rows[0];
+    )[0];
 
     if (!user || !user.totpSecret) {
       return { message: "User not found or no TOTP secret registered." };

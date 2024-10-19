@@ -73,20 +73,7 @@ router.post(
       const getNewUser = "SELECT * FROM users WHERE email = $1";
       const user = await db.query(getNewUser, [email]);
 
-      // Generate TOTP Secret for the user
-      const { qrCode, manualKey } = await registerTOTP(email);
 
-      const jwtToken = jwt.sign({ user: user.id }, JWT_SECRET, {
-        expiresIn: "1h",
-      });
-
-      res.status(201).json(
-        {
-          message: "User registered successfully: " + username,
-          jwtToken: jwtToken,
-          qrCode: qrCode, // Return QR code for user to scan
-          manualKey: manualKey, // Provide manual key as fallback
-        });
     } catch (error) {
       res.status(500).json({
         message: "Server error during registration",
@@ -96,13 +83,37 @@ router.post(
   }
 );
 
+// Endpoint to endable the two authentication
+router.post("/enable2fa", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Generate TOTP Secret for the user
+    const { qrCode, manualKey } = await registerTOTP(email);
+
+    const jwtToken = jwt.sign({ user: user.id }, JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.status(201).json({
+      message: "User registered successfully with 2 factor auth: " + username,
+      jwtToken: jwtToken,
+      qrCode: qrCode, // Return QR code for user to scan
+      manualKey: manualKey, // Provide manual key as fallback
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error logging out", error: error.message });
+  }
+});
 
 router.post(
   "/sign-in",
   loginRateLimiter,
   checkNewLoginByIP,
   async (req, res) => {
-    const { email, password, totpToken } = req.body;
+    const { email, password } = req.body;
     const ipAddress =
       req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
 
@@ -136,25 +147,10 @@ router.post(
         return res.status(400).json({ message: "Password is incorrect" });
       }
 
-      // Check if the user has TOTP enabled by checking their totpSecret in the database
-      if (user.totpSecret) {
-        // Validate the TOTP token
-        const totpValid = validateTOTP(user.email, totpToken); // Use the provided token
-
-        if (!totpValid) {
-          return res.status(400).json({ message: "Invalid TOTP token" });
-        }
-      }
-
-      const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
-        expiresIn: "1h",
-      });
-
       //once user logins the login attempts gets deleted
       await redisClient.del(`login_attempts:${user.id}`);
       return res.json({
-        message: "Successfully logged in with 2 auth too",
-        jwtToken: jwtToken,
+        message: "Successfully logged with email and password"
       });
     } catch (error) {
       res
@@ -165,15 +161,22 @@ router.post(
 );
 
 // Endpoint to verify the two-way authentication code
-router.post("/verify", async (req, res) => {
-  const { email, token } = req.body;
+router.post("/verify2fa", async (req, res) => {
+  const { email, totpToken } = req.body;
 
   try {
-    const findUserQuery = "SELECT * FROM users WHERE email = $1";
-    const user = await db.query(findUserQuery, [email]);
-
     const result = await validateTOTP(email, token);
     console.log(result);
+
+    // Check if the user has TOTP enabled by checking their totpSecret in the database
+    if (user.totpSecret) {
+      // Validate the TOTP token
+      const totpValid = validateTOTP(email, totpToken); // Use the provided token
+
+      if (!totpValid) {
+        return res.status(400).json({ message: "Invalid TOTP token" });
+      }
+    }
 
     const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
       expiresIn: "1h",
@@ -181,7 +184,7 @@ router.post("/verify", async (req, res) => {
 
     //toke session started for session management
     await redisClient.set(`session_token:${user.id}`, jwtToken, { EX: 3600 });
-    res.json({ message: "sign in successful ", token: jwtToken });
+    res.json({ message: "sign in successful ", jwtToken: jwtToken });
   } catch (error) {
     res
       .status(500)
