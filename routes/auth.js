@@ -39,14 +39,24 @@ const {
   createResetPasswordEmail,
 } = require("../utils/nodeMailer");
 
-const {validateTOTP, registerTOTP} = require("../utils/secondAuth")
+const {validateTOTP, registerTOTP} = require("../utils/TOTP")
 
 //find a way to tell if user is first time login or not
 //if first time login, then send a 2FA code to the user's email and no token will need authentication
 //if not first time login, then send a 2FA code to the user's email and a token will need authentication
 
+      //notes to help with unit testing---
+      //1.
+      //helper function to see if user exists - getUser
+      //if true
+      //return error
+      //else function create user
+      //create small test for helper functions and then work up to testing routes
+      //2.
+      //query dictionary
+
 router.post(
-  "/register",
+  "/sign-up",
   validatePassword,
   validateEmail,
   validateUsername,
@@ -61,16 +71,6 @@ router.post(
         return res.status(400).json({ message: "User already exists" });
       }
 
-      //notes to help with unit testing---
-      //1.
-      //helper function to see if user exists - getUser
-      //if true
-      //return error
-      //else function create user
-      //2.
-      //query dictionary
-      
-
       // Hash the password
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -78,23 +78,16 @@ router.post(
         "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)";
       await db.query(insertUserQuery, [username, email, hashedPassword]);
 
+      //should I use email instead of user id?
       const getNewUser = "SELECT * FROM users WHERE email = $1";
       const user = await db.query(getNewUser, [email]);
-
-      //2Factor Auth
-      const { qrCode, manualKey } = await registerTOTP(email);
 
       //-------should I be issuing token for registration?
       const token = jwt.sign({ user: user.id }, JWT_SECRET, {
         expiresIn: "1h",
       });
 
-      res.status(201).json({
-        message: "User registered successfully: " + username,
-        token: token,
-        qrCode: qrCode, // Return QR code for user to scan
-        manualKey: manualKey, // Provide manual key as fallback
-      });
+    res.json({ message: "Successfully logged in", token: token });
     } catch (error) {
       res.status(500).json({
         message: "Server error during registration",
@@ -104,7 +97,7 @@ router.post(
   }
 );
 
-router.post("/login", loginRateLimiter, checkNewLoginByIP, verifyToken,  async (req, res) => {
+router.post("/sign-in", checkNewLoginByIP,  async (req, res) => {
   const { email, password, token } = req.body; 
   const ipAddress =
     req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
@@ -138,29 +131,52 @@ router.post("/login", loginRateLimiter, checkNewLoginByIP, verifyToken,  async (
       return res.status(400).json({ message: "Password is incorrect" });
     }
 
-    //2Factor Auth
-    if (user.totpSecret) {
-      const totpValid = validateTOTP(user.email, token);
+        const { qrCode, manualKey } = await registerTOTP(email);
 
-      if (!totpValid) {
-        return res.status(400).json({ message: "Invalid TOTP token" });
-      }
-    }
-
-    const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
-    await redisClient.set(`session_token:${user.id}`, jwtToken, { EX: 3600 });
+    //once user logins the login attempts gets deleted
     await redisClient.del(`login_attempts:${user.id}`);
-
-    res.json({ message: "Successfully logged in", token: jwtToken });
+    return res.json({
+      message: "TOTP setup successful",
+      qrCode, // Return the QR code to be displayed on the frontend
+      manualKey, // Provide a manual key as a fallback option
+    });
   } catch (error) {
     res
       .status(500)
       .json({ message: "Server error during login", error: error.message });
   }
 });
+
+// Endpoint to verify the two-way authentication code
+router.post('/verify', async (req, res) => {
+  const { email, token } = req.body;
+
+  try {
+        const findUserQuery = "SELECT * FROM users WHERE email = $1";
+        const user = await db.query(findUserQuery, [email]);
+
+    const result = await validateTOTP(email, token);
+  console.log(result);
+
+    const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
+      expiresIn: "1h",
+    });
+  
+    //toke session started for session management
+    await redisClient.set(`session_token:${user.id}`, jwtToken, { EX: 3600 });
+        res.json({ message: "sign in successful ", token: jwtToken });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error logging out", error: error.message });
+  }
+
+
+});
+
+
+
+
 
 router.post("/logout", verifyToken, async (req, res) => {
   const token = req.user;
