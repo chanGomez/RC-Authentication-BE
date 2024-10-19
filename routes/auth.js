@@ -16,14 +16,11 @@ redisClient.connect().then(() => {
 });
 
 //middleware
-const { checkNewLoginByIP } = require("../middleware/newLoginIP")
+const { checkNewLoginByIP } = require("../middleware/newLoginIP");
 const {
-  authenticateToken,
   verifyToken,
 } = require("../middleware/jwt-authorization");
-const { 
-  loginRateLimiter
-} = require("../middleware/rateLimiter")
+const { loginRateLimiter } = require("../middleware/rateLimiter");
 const {
   validatePassword,
   validateEmail,
@@ -39,21 +36,21 @@ const {
   createResetPasswordEmail,
 } = require("../utils/nodeMailer");
 
-const {validateTOTP, registerTOTP} = require("../utils/TOTP")
+const { validateTOTP, registerTOTP } = require("../utils/TOTP");
 
 //find a way to tell if user is first time login or not
 //if first time login, then send a 2FA code to the user's email and no token will need authentication
 //if not first time login, then send a 2FA code to the user's email and a token will need authentication
 
-      //notes to help with unit testing---
-      //1.
-      //helper function to see if user exists - getUser
-      //if true
-      //return error
-      //else function create user
-      //create small test for helper functions and then work up to testing routes
-      //2.
-      //query dictionary
+//notes to help with unit testing---
+//1.
+//helper function to see if user exists - getUser
+//if true
+//return error
+//else function create user
+//create small test for helper functions and then work up to testing routes
+//2.
+//query dictionary
 
 router.post(
   "/sign-up",
@@ -87,7 +84,7 @@ router.post(
         expiresIn: "1h",
       });
 
-    res.json({ message: "Successfully logged in", token: token });
+      res.json({ message: "Successfully logged in", token: token });
     } catch (error) {
       res.status(500).json({
         message: "Server error during registration",
@@ -97,8 +94,8 @@ router.post(
   }
 );
 
-router.post("/sign-in", checkNewLoginByIP,  async (req, res) => {
-  const { email, password, token } = req.body; 
+router.post("/sign-in", loginRateLimiter, checkNewLoginByIP, async (req, res) => {
+  const { email, password, token } = req.body;
   const ipAddress =
     req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
 
@@ -131,7 +128,7 @@ router.post("/sign-in", checkNewLoginByIP,  async (req, res) => {
       return res.status(400).json({ message: "Password is incorrect" });
     }
 
-        const { qrCode, manualKey } = await registerTOTP(email);
+    const { qrCode, manualKey } = await registerTOTP(email);
 
     //once user logins the login attempts gets deleted
     await redisClient.del(`login_attempts:${user.id}`);
@@ -148,35 +145,29 @@ router.post("/sign-in", checkNewLoginByIP,  async (req, res) => {
 });
 
 // Endpoint to verify the two-way authentication code
-router.post('/verify', async (req, res) => {
+router.post("/verify", async (req, res) => {
   const { email, token } = req.body;
 
   try {
-        const findUserQuery = "SELECT * FROM users WHERE email = $1";
-        const user = await db.query(findUserQuery, [email]);
+    const findUserQuery = "SELECT * FROM users WHERE email = $1";
+    const user = await db.query(findUserQuery, [email]);
 
     const result = await validateTOTP(email, token);
-  console.log(result);
+    console.log(result);
 
     const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
       expiresIn: "1h",
     });
-  
+
     //toke session started for session management
     await redisClient.set(`session_token:${user.id}`, jwtToken, { EX: 3600 });
-        res.json({ message: "sign in successful ", token: jwtToken });
+    res.json({ message: "sign in successful ", token: jwtToken });
   } catch (error) {
     res
       .status(500)
       .json({ message: "Error logging out", error: error.message });
   }
-
-
 });
-
-
-
-
 
 router.post("/logout", verifyToken, async (req, res) => {
   const token = req.user;
@@ -256,12 +247,10 @@ router.post("/reset-password", validatePassword, async (req, res) => {
 
     res.json({ message: "Password reset successful" });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Server error during password reset",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Server error during password reset",
+      error: error.message,
+    });
   }
 });
 

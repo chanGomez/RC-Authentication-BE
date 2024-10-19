@@ -18,7 +18,7 @@ const trackFailedLoginByUser = async (userId, email) => {
 
     if (attempts >= 2) {
       await transporter.sendMail(lockedOutEmail(email));
-      await redisClient.set(`lockedOutUser:${userId}`, "true", {EX: 21600});
+      await redisClient.set(`lockedOutUser:${userId}`, "true", { EX: 21600 });
       await redisClient.del(key);
       return { locked: true };
     }
@@ -53,9 +53,7 @@ const trackFailedLoginByIP = async (userID, ipAddress) => {
   return { locked: false };
 };
 
-
 const isUserLockedByUserAndIP = async (userId, ipAddress) => {
-
   const accountResult = await redisClient.get(`lockedOutUser:${userId}`);
   const ipResult = await redisClient.get(`lockedOut_IP:${ipAddress}`);
 
