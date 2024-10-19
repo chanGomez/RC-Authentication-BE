@@ -73,20 +73,23 @@ router.post(
       const getNewUser = "SELECT * FROM users WHERE email = $1";
       const user = await db.query(getNewUser, [email]);
 
+
       const { qrCode, manualKey } = await registerTOTP(email);
-      res.json({
-        message:
-          "User registered successfully. Scan the QR code to enable 2FA.",
-        qrCode, // Return the QR code to be displayed on the frontend
-        manualKey, // Manual key as a backup
-      });
+       if (qrCode){
+         return res.json({
+           message:
+             "User registered successfully. Scan the QR code to enable 2FA.",
+           qrCode, // Return the QR code to be displayed on the frontend
+           manualKey, // Manual key as a backup
+         });
+       }
 
       //-------should I be issuing token for registration?
       const token = jwt.sign({ user: user.id }, JWT_SECRET, {
         expiresIn: "1h",
       });
 
-      res.json({ message: "Successfully logged in", token: token });
+      return res.json({ message: "Successfully logged in", token: token });
     } catch (error) {
       res.status(500).json({
         message: "Server error during registration",
