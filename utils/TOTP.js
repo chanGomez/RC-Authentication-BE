@@ -3,64 +3,69 @@ const QRCode = require("qrcode");
 const db = require("../db/db.js");
 
 async function registerTOTP(email) {
-  const secret = speakeasy.generateSecret({
-    name: email,
-    issuer: "auth",
-    algorithm: "sha1",
-  });
-  console.log(secret.base32);
+  const secret = speakeasy.generateSecret({ name: email, issuer: "auth" });
+  console.log("Generated TOTP Secret:", secret.base32);
+
+  // Validate the Base32 secret before storing
+  if (!isValidBase32(secret.base32)) {
+    throw new Error("Generated TOTP secret is not valid Base32.");
+  }
 
   const updateSecret = "UPDATE users SET totpSecret = $1 WHERE email = $2";
   await db.query(updateSecret, [secret.base32, email]);
 
+  // Generate the otpauth URL for QR code
   const otpauthURL = secret.otpauth_url;
-  return QRCode.toDataURL(otpauthURL)
-    .then((qrCode) => {
-      return {
-        qrCode,
-        manualKey: secret.base32,
-      };
-    })
-    .catch((err) => {
-      return {
-        err,
-        message: "TOTP registration failed, " + "Failed to generate QR code",
-      };
-    });
+  const qrCode = await QRCode.toDataURL(otpauthURL);
+
+  return {
+    qrCode,
+    manualKey: secret.base32,
+  };
+}
+
+function isValidBase32(str) {
+  const base32Regex = /^[A-Z2-7]*$/;
+  return base32Regex.test(str);
 }
 
 async function validateTOTP(email, token) {
   try {
-    const userExistsQuery = "SELECT * FROM users WHERE email = $1";
-    const user = await db.query(userExistsQuery, [email]);
+    const user = (
+      await db.query("SELECT * FROM users WHERE email = $1", [email])
+    ).rows[0];
+
+    if (!user || !user.totpSecret) {
+      return { message: "User not found or no TOTP secret registered." };
+    }
 
     const isValid = speakeasy.totp.verify({
       secret: user.totpSecret,
       encoding: "base32",
       token: token,
-      window: 2,
-      algorithm: "sha1",
+      window: 1, // Small window for extra tolerance
+      algorithm: "sha1", // Make sure this matches your secret generation
     });
 
-    if (isValid) {
-      return { message: "TOTP token is valid" };
-    } else {
-      return { message: "Invalid TOTP token" };
-    }
+    return isValid
+      ? { message: "TOTP token is valid" }
+      : { message: "Invalid TOTP token" };
   } catch (err) {
-    return { message: "TOTP validation failed" };
+    console.log(err);
+    return { message: "TOTP validation failed", error: err };
   }
 }
 
 
+module.exports = { validateTOTP, registerTOTP };
 
-  //secret looks like this
-  // {
-  //   ascii: 'FTgbWTo[>hiS2R!@tl&PJLTElTD0?Q]a',
-  //   hex: '4654676257546f5b3e68695332522140746c26504a4c54456c5444303f515d61',
-  //   base32: 'IZKGOYSXKRXVWPTINFJTEURBIB2GYJSQJJGFIRLMKRCDAP2RLVQQ',
-  //   otpauth_url: 'otpauth://totp/test2%40gmail.com?secret=IZKGOYSXKRXVWPTINFJTEURBIB2GYJSQJJGFIRLMKRCDAP2RLVQQ'
-  // }
+//secret looks like this
+// {
+//   ascii: 'FTgbWTo[>hiS2R!@tl&PJLTElTD0?Q]a',
+//   hex: '4654676257546f5b3e68695332522140746c26504a4c54456c5444303f515d61',
+//   base32: 'IZKGOYSXKRXVWPTINFJTEURBIB2GYJSQJJGFIRLMKRCDAP2RLVQQ',
+//   otpauth_url: 'otpauth://totp/test2%40gmail.com?secret=IZKGOYSXKRXVWPTINFJTEURBIB2GYJSQJJGFIRLMKRCDAP2RLVQQ'
+// }
 
 //final data
 // {
@@ -70,3 +75,6 @@ async function validateTOTP(email, token) {
 // }
 
 module.exports = { validateTOTP, registerTOTP };
+
+
+// 6 | okokaoka | chantytueday@gmail.com | $2b$10$KWttjHBGak1KrUE5PQ4q9OBJ5T116VdB/4ZeLUpw48auMsBVPK0Ei | MRMDAOBILMZFE32CIFEUKOJJLVHHE2JMJR2V233PGVUGS6JBPMTA

@@ -73,23 +73,20 @@ router.post(
       const getNewUser = "SELECT * FROM users WHERE email = $1";
       const user = await db.query(getNewUser, [email]);
 
-
+      // Generate TOTP Secret for the user
       const { qrCode, manualKey } = await registerTOTP(email);
-       if (qrCode){
-         return res.json({
-           message:
-             "User registered successfully. Scan the QR code to enable 2FA.",
-           qrCode, // Return the QR code to be displayed on the frontend
-           manualKey, // Manual key as a backup
-         });
-       }
 
-      //-------should I be issuing token for registration?
-      const token = jwt.sign({ user: user.id }, JWT_SECRET, {
+      const jwtToken = jwt.sign({ user: user.id }, JWT_SECRET, {
         expiresIn: "1h",
       });
 
-      return res.json({ message: "Successfully logged in", token: token });
+      res.status(201).json(
+        {
+          message: "User registered successfully: " + username,
+          jwtToken: jwtToken,
+          qrCode: qrCode, // Return QR code for user to scan
+          manualKey: manualKey, // Provide manual key as fallback
+        });
     } catch (error) {
       res.status(500).json({
         message: "Server error during registration",
@@ -99,12 +96,13 @@ router.post(
   }
 );
 
+
 router.post(
   "/sign-in",
   loginRateLimiter,
   checkNewLoginByIP,
   async (req, res) => {
-    const { email, password, token } = req.body;
+    const { email, password, totpToken } = req.body;
     const ipAddress =
       req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
 
@@ -138,14 +136,25 @@ router.post(
         return res.status(400).json({ message: "Password is incorrect" });
       }
 
-      const { qrCode, manualKey } = await registerTOTP(email);
+      // Check if the user has TOTP enabled by checking their totpSecret in the database
+      if (user.totpSecret) {
+        // Validate the TOTP token
+        const totpValid = validateTOTP(user.email, totpToken); // Use the provided token
+
+        if (!totpValid) {
+          return res.status(400).json({ message: "Invalid TOTP token" });
+        }
+      }
+
+      const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
+        expiresIn: "1h",
+      });
 
       //once user logins the login attempts gets deleted
       await redisClient.del(`login_attempts:${user.id}`);
       return res.json({
-        message: "TOTP setup successful",
-        qrCode, // Return the QR code to be displayed on the frontend
-        manualKey, // Provide a manual key as a fallback option
+        message: "Successfully logged in with 2 auth too",
+        jwtToken: jwtToken,
       });
     } catch (error) {
       res
