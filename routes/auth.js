@@ -17,9 +17,7 @@ redisClient.connect().then(() => {
 
 //middleware
 const { checkNewLoginByIP } = require("../middleware/newLoginIP");
-const {
-  verifyToken,
-} = require("../middleware/jwt-authorization");
+const { verifyToken } = require("../middleware/jwt-authorization");
 const { loginRateLimiter } = require("../middleware/rateLimiter");
 const {
   validatePassword,
@@ -75,6 +73,14 @@ router.post(
       const getNewUser = "SELECT * FROM users WHERE email = $1";
       const user = await db.query(getNewUser, [email]);
 
+      const { qrCode, manualKey } = await registerTOTP(email);
+      res.json({
+        message:
+          "User registered successfully. Scan the QR code to enable 2FA.",
+        qrCode, // Return the QR code to be displayed on the frontend
+        manualKey, // Manual key as a backup
+      });
+
       //-------should I be issuing token for registration?
       const token = jwt.sign({ user: user.id }, JWT_SECRET, {
         expiresIn: "1h",
@@ -90,55 +96,61 @@ router.post(
   }
 );
 
-router.post("/sign-in", loginRateLimiter, checkNewLoginByIP, async (req, res) => {
-  const { email, password, token } = req.body;
-  const ipAddress =
-    req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
+router.post(
+  "/sign-in",
+  loginRateLimiter,
+  checkNewLoginByIP,
+  async (req, res) => {
+    const { email, password, token } = req.body;
+    const ipAddress =
+      req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
 
-  try {
-    const findUserQuery = "SELECT * FROM users WHERE email = $1";
-    const userResult = await db.query(findUserQuery, [email]);
+    try {
+      const findUserQuery = "SELECT * FROM users WHERE email = $1";
+      const userResult = await db.query(findUserQuery, [email]);
 
-    if (userResult.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Username or email is incorrect" });
-    }
-    const user = userResult[0];
-
-    // Check if the user is locked out by userID and IP address
-    let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
-    if (lockedOutResult.locked === true) {
-      return res.status(400).json({ message: `${lockedOutResult.message}` });
-    }
-
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      const resultUser = await trackFailedLoginByUser(user.id, email);
-      const resultIP = await trackFailedLoginByIP(user.id, ipAddress);
-      if (resultUser.locked === true || resultIP.locked === true) {
-        return res.status(400).json({
-          message: "Too many failed attempts. You are locked out for 6 hours.",
-        });
+      if (userResult.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "Username or email is incorrect" });
       }
-      return res.status(400).json({ message: "Password is incorrect" });
+      const user = userResult[0];
+
+      // Check if the user is locked out by userID and IP address
+      let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
+      if (lockedOutResult.locked === true) {
+        return res.status(400).json({ message: `${lockedOutResult.message}` });
+      }
+
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
+        const resultUser = await trackFailedLoginByUser(user.id, email);
+        const resultIP = await trackFailedLoginByIP(user.id, ipAddress);
+        if (resultUser.locked === true || resultIP.locked === true) {
+          return res.status(400).json({
+            message:
+              "Too many failed attempts. You are locked out for 6 hours.",
+          });
+        }
+        return res.status(400).json({ message: "Password is incorrect" });
+      }
+
+      const { qrCode, manualKey } = await registerTOTP(email);
+
+      //once user logins the login attempts gets deleted
+      await redisClient.del(`login_attempts:${user.id}`);
+      return res.json({
+        message: "TOTP setup successful",
+        qrCode, // Return the QR code to be displayed on the frontend
+        manualKey, // Provide a manual key as a fallback option
+      });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: "Server error during login", error: error.message });
     }
-
-    const { qrCode, manualKey } = await registerTOTP(email);
-
-    //once user logins the login attempts gets deleted
-    await redisClient.del(`login_attempts:${user.id}`);
-    return res.json({
-      message: "TOTP setup successful",
-      qrCode, // Return the QR code to be displayed on the frontend
-      manualKey, // Provide a manual key as a fallback option
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Server error during login", error: error.message });
   }
-});
+);
 
 // Endpoint to verify the two-way authentication code
 router.post("/verify", async (req, res) => {
@@ -184,6 +196,5 @@ router.post("/logout", verifyToken, async (req, res) => {
       .json({ message: "Error logging out", error: error.message });
   }
 });
-
 
 module.exports = router;
