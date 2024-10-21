@@ -17,7 +17,6 @@ const {
   createResetPasswordEmail,
 } = require("../utils/nodeMailer");
 
-
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   try {
@@ -32,17 +31,19 @@ router.post("/forgot-password", async (req, res) => {
       resetTokenExpiry: resetTokenExpiry,
     });
 
-    //create reset url to sent in email
-    const resetUrl = `https://authenticatorrrr.netlify.app/reset-password?id=${foundUser.id}token=${resetToken}`;
-    const resetEmail = await transporter.sendMail(createResetPasswordEmail(email, resetUrl));
+    console.log("reset token: ", resetToken);
 
-    res
-      .status(200)
-      .json({
-        foundUser: foundUser,
-        tokenInserted: tokenInserted,
-        tokenInserted: tokenInserted,
-      });
+    //create reset url to sent in email
+    const resetUrl = `https://authenticatorrrr.netlify.app/reset-password?id=${foundUser.id}&token=${resetToken}`;
+    const resetEmail = await transporter.sendMail(
+      createResetPasswordEmail(email, resetUrl)
+    );
+
+    res.status(200).json({
+      foundUser: foundUser,
+      tokenInserted: tokenInserted,
+      resetEmail: resetEmail,
+    });
   } catch (error) {
     res.status(500).json({
       error: error,
@@ -52,17 +53,24 @@ router.post("/forgot-password", async (req, res) => {
 
 router.post("/reset-password", async (req, res) => {
   const { password } = req.body;
-  const userId = req.query.id; 
-  const token = req.query.token; 
+  const { id, token } = req.query;
+  console.log(password, id, token);
 
   try {
     const validToken = await checkResetToken(token);
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const updatedPassword = await updatePassword(hashedPassword, userId);
+    const updatedPassword = await updatePassword(hashedPassword, id);
+
     const deletedToken = await deleteResetToken(token);
 
-    res.status(200).json({ token: validToken, password: updatedPassword, deletedToken: deletedToken });
+    res
+      .status(200)
+      .json({
+        token: validToken,
+        password: updatedPassword,
+        deletedToken: deletedToken,
+      });
   } catch (error) {
     res.status(500).json({
       error: error,

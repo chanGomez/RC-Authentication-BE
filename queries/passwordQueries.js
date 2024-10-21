@@ -3,7 +3,7 @@ const db = require("../db/db");
 const insertResetToken = async ({ userId, resetToken, resetTokenExpiry }) => {
   try {
     const userInfo = await db.one(
-      "INSERT INTO reset_tokens (email, token, expiration_time) VALUES ($1, $2, $3)",
+      "INSERT INTO reset_tokens (userId, token, expiration_time) VALUES ($1, $2, $3)",
       [userId, resetToken, resetTokenExpiry]
     );
     return userInfo;

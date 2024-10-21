@@ -7,7 +7,7 @@ app.use(express.json());
 
 const authRouter = require("./controllers/authController");
 const movieRouter = require("./controllers/movies");
-const reset = require("./controllers/passwordController");
+const resetRouter = require("./controllers/passwordController");
 
 // Routes
 app.get("/", (req, res) => {
@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRouter);
-app.use("/reset", reset)
+app.use("/reset", resetRouter);
 app.use("/get-movies", movieRouter);
 
 app.use("*", (err, req, res, next) => {
