@@ -34,7 +34,10 @@ router.post("/forgot-password", async (req, res) => {
     console.log("reset token: ", resetToken);
 
     //create reset url to sent in email
-    const resetUrl = `https://authenticatorrrr.netlify.app/reset-password?id=${foundUser.id}&token=${resetToken}`;
+    // const resetUrl = `https://authenticatorrrr.netlify.app/reset-password?id=${foundUser.id}&token=${resetToken}`;
+    const resetUrl = `http://localhost:5173/reset-password?id=${foundUser.id}&token=${resetToken}`;
+    console.log(resetUrl);
+
     const resetEmail = await transporter.sendMail(
       createResetPasswordEmail(email, resetUrl)
     );
@@ -52,8 +55,8 @@ router.post("/forgot-password", async (req, res) => {
 });
 
 router.post("/reset-password", async (req, res) => {
-  const { password } = req.body;
-  const { id, token } = req.query;
+  const { password, id, token } = req.body;
+  // const { id, token } = req.query;
   console.log(password, id, token);
 
   try {
@@ -64,13 +67,11 @@ router.post("/reset-password", async (req, res) => {
 
     const deletedToken = await deleteResetToken(token);
 
-    res
-      .status(200)
-      .json({
-        token: validToken,
-        password: updatedPassword,
-        deletedToken: deletedToken,
-      });
+    res.status(200).json({
+      token: validToken,
+      password: updatedPassword,
+      deletedToken: deletedToken,
+    });
   } catch (error) {
     res.status(500).json({
       error: error,
