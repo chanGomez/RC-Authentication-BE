@@ -1,25 +1,24 @@
 const speakeasy = require("speakeasy");
 const QRCode = require("qrcode");
 const db = require("../db/db");
-const { updateSecret } = require("../queries/auth");
-
+const { updateSecret } = require("../queries/authQueries");
 
 async function registerTOTP(email) {
   const secret = speakeasy.generateSecret({ name: email, issuer: "auth" });
-  
+
   // Validate the Base32 secret before storing
   if (!isValidBase32(secret.base32)) {
     throw new Error("Generated TOTP secret is not valid Base32.");
   }
-  
+
   const updatedSecret = await updateSecret(secret.base32, email);
-      if (!updatedSecret) {
-        return {
-          status: false,
-          message: "Could not update the secret",
-        }
-      }
-      console.log("secretttt: ", updatedSecret);
+  if (!updatedSecret) {
+    return {
+      status: false,
+      message: "Could not update the secret",
+    };
+  }
+  console.log("secretttt: ", updatedSecret);
 
   // Generate the otpauth URL for QR code
   const otpauthURL = secret.otpauth_url;
@@ -51,13 +50,12 @@ async function validateTOTP(email, token) {
       await db.query("SELECT * FROM users WHERE email = $1", [email])
     )[0];
 
-
-    if (!user || !user.totpsecret) {
+    if (!user || !user.totp_secret) {
       return { message: "User not found or no TOTP secret registered." };
     }
 
     const isValid = speakeasy.totp.verify({
-      secret: user.totpsecret,
+      secret: user.totp_secret,
       encoding: "base32",
       token: token,
       window: 2, // Small window for extra tolerance
@@ -65,8 +63,8 @@ async function validateTOTP(email, token) {
     });
 
     return isValid
-      ? { message: "TOTP token is valid" }
-      : { message: "Invalid TOTP token" };
+      ? { result: true, message: "TOTP token is valid" }
+      : { result: false, message: "Invalid TOTP token" };
   } catch (err) {
     console.log(err);
     return { message: "TOTP validation failed", error: err };

@@ -7,13 +7,15 @@ app.use(express.json());
 
 const authRouter = require("./routes/auth");
 const movieRouter = require("./routes/movies");
+const reset = require("./routes/passwordReset");
 
 // Routes
 app.get("/", (req, res) => {
   res.status(200).send("RED CANARY AUTHENTICATION BACKEND!!");
 });
 
-app.use("/auth", authRouter);
+app.use("/auth", authRouter, reset);
+// app.use("/reset", reset)
 app.use("/get-movies", movieRouter);
 
 app.use("*", (err, req, res, next) => {
