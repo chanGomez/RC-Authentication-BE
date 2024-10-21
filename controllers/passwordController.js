@@ -8,7 +8,6 @@ const {
   checkResetToken,
   updatePassword,
   deleteResetToken,
-  deleteResetToken,
 } = require("../queries/passwordQueries");
 
 const { getUserByEmail } = require("../queries/authQueries");
@@ -70,3 +69,5 @@ router.post("/reset-password", async (req, res) => {
     });
   }
 });
+
+module.exports = router;

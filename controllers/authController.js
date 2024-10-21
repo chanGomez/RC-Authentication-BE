@@ -67,7 +67,7 @@ router.post(
   }
 );
 
-router.get("/enable2fa", async (req, res) => {
+router.post("/enable2fa", async (req, res) => {
   const { email } = req.body;
 
   try {
@@ -142,16 +142,16 @@ router.post(
   }
 );
 
-router.put("/verify2fa", loginRateLimiter, async (req, res) => {
-  const { email, totpToken } = req.body;
-  console.log("body,", req.body);
+router.post("/verify2fa", loginRateLimiter, async (req, res) => {
+  const { email, totp_token } = req.body;
+  console.log("body", req.body);
 
   try {
     const user = await getUserByEmail(email);
     //verify token sent by user
-    const isTOTPValid = await validateTOTP(email, totpToken);
-    if (!isTOTPValid.result) {
-      return res.status(400).json({ message: isTOTPValid.message });
+    const isTOTPValid = await validateTOTP(email, totp_token);
+    if (!isTOTPValid) {
+      return res.status(400).json({ message: "Invalid TOTP token" });
     }
 
     const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
@@ -177,8 +177,11 @@ router.post("/logout", verifyToken, async (req, res) => {
   }
 
   try {
-    const insertTokenToBlacklist = blacklistToken(token)
-    res.json({ insertTokenToBlacklist: insertTokenToBlacklist, message: "Logged out successfully" });
+    const insertTokenToBlacklist = blacklistToken(token);
+    res.json({
+      insertTokenToBlacklist: insertTokenToBlacklist,
+      message: "Logged out successfully",
+    });
   } catch (error) {
     res
       .status(500)

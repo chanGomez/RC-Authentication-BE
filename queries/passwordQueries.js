@@ -53,5 +53,4 @@ module.exports = {
   checkResetToken,
   updatePassword,
   deleteResetToken,
-  deleteResetToken,
 };

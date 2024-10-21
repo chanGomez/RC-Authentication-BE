@@ -1,19 +1,19 @@
-const express = require("express");
-const bcrypt = require("bcrypt");
-const db = require("../db/db");
-const router = express.Router();
-const crypto = require("crypto");
+// const express = require("express");
+// const bcrypt = require("bcrypt");
+// const db = require("../db/db");
+// const router = express.Router();
+// const crypto = require("crypto");
 
-const {
-  transporter,
-  createResetPasswordEmail,
-} = require("../utils/nodeMailer");
+// const {
+//   transporter,
+//   createResetPasswordEmail,
+// } = require("../utils/nodeMailer");
 
-const {
-  validatePassword,
-  validateEmail,
-  validateUsername,
-} = require("../middleware/validate");
+// const {
+//   validatePassword,
+//   validateEmail,
+//   validateUsername,
+// } = require("../middleware/validate");
 
 
 // router.post("/forgot-password", async (req, res) => {
@@ -85,4 +85,4 @@ const {
 //   }
 // });
 
-module.exports = router;
+// module.exports = router;

@@ -1,36 +1,36 @@
-const express = require("express");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const db = require("../db/db");
-const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET;
-const crypto = require("crypto");
-const redisClient = require("redis").createClient();
+// const express = require("express");
+// const bcrypt = require("bcrypt");
+// const jwt = require("jsonwebtoken");
+// const db = require("../db/db");
+// const router = express.Router();
+// const JWT_SECRET = process.env.JWT_SECRET;
+// const crypto = require("crypto");
+// const redisClient = require("redis").createClient();
 
-redisClient.on("error", (err) => {
-  console.error("Redis error:", err);
-});
+// redisClient.on("error", (err) => {
+//   console.error("Redis error:", err);
+// });
 
-redisClient.connect().then(() => {
-  console.log("Connected to Redis in auth");
-});
+// redisClient.connect().then(() => {
+//   console.log("Connected to Redis in auth");
+// });
 
-//middleware
-const { checkNewLoginByIP } = require("../middleware/newLoginIP");
-const { verifyToken } = require("../middleware/jwt-authorization");
-const { loginRateLimiter } = require("../middleware/rateLimiter");
-const {
-  validatePassword,
-  validateEmail,
-  validateUsername,
-} = require("../middleware/validate");
-const {
-  isUserLockedByUserAndIP,
-  trackFailedLoginByUser,
-  trackFailedLoginByIP,
-} = require("../utils/loginTracker");
+// //middleware
+// const { checkNewLoginByIP } = require("../middleware/newLoginIP");
+// const { verifyToken } = require("../middleware/jwt-authorization");
+// const { loginRateLimiter } = require("../middleware/rateLimiter");
+// const {
+//   validatePassword,
+//   validateEmail,
+//   validateUsername,
+// } = require("../middleware/validate");
+// const {
+//   isUserLockedByUserAndIP,
+//   trackFailedLoginByUser,
+//   trackFailedLoginByIP,
+// } = require("../utils/loginTracker");
 
-const { validateTOTP, registerTOTP } = require("../utils/TOTP");
+// const { validateTOTP, registerTOTP } = require("../utils/TOTP");
 
 //find a way to tell if user is first time login or not
 //if first time login, then send a 2FA code to the user's email and no token will need authentication
@@ -52,22 +52,22 @@ const { validateTOTP, registerTOTP } = require("../utils/TOTP");
 //   validateEmail,
 //   validateUsername,
 //   async (req, res) => {
-    // const { username, email, password } = req.body;
+// const { username, email, password } = req.body;
 
-    // try {
-    //   const userExistsQuery = "SELECT * FROM users WHERE email = $1";
-    //   const userExists = await db.query(userExistsQuery, [email]);
+// try {
+//   const userExistsQuery = "SELECT * FROM users WHERE email = $1";
+//   const userExists = await db.query(userExistsQuery, [email]);
 
-      // if (userExists.length > 0) {
-      //   return res.status(400).json({ message: "User already exists" });
-      // }
+// if (userExists.length > 0) {
+//   return res.status(400).json({ message: "User already exists" });
+// }
 
-      // Hash the password
-      // const hashedPassword = await bcrypt.hash(password, 10);
+// Hash the password
+// const hashedPassword = await bcrypt.hash(password, 10);
 
-      // const insertUserQuery =
-      //   "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)";
-      // await db.query(insertUserQuery, [username, email, hashedPassword]);
+// const insertUserQuery =
+//   "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)";
+// await db.query(insertUserQuery, [username, email, hashedPassword]);
 
 //       res.status(201).json({
 //         message: "User registered  " + username,
@@ -108,63 +108,63 @@ const { validateTOTP, registerTOTP } = require("../utils/TOTP");
 //   "/sign-in",
 //   loginRateLimiter,
 //   checkNewLoginByIP,
-  // async (req, res) => {
-  //   const { email, password } = req.body;
-  //   const ipAddress =
-  //     req.headers["x-forwarded-for"]?.split(",")[0] ||
-  //     req.socket.remoteAddress ||
-  //     req.ip;
+// async (req, res) => {
+//   const { email, password } = req.body;
+//   const ipAddress =
+//     req.headers["x-forwarded-for"]?.split(",")[0] ||
+//     req.socket.remoteAddress ||
+//     req.ip;
 
-  //     if (!ipAddress) {
-  //       return res
-  //         .status(400)
-  //         .json({ message: "Unable to determine IP address" });
-  //     }
+//     if (!ipAddress) {
+//       return res
+//         .status(400)
+//         .json({ message: "Unable to determine IP address" });
+//     }
 
-  //     try {
-  //       const findUserQuery = "SELECT * FROM users WHERE email = $1";
-  //       const userResult = await db.query(findUserQuery, [email]);
-  //       console.log("line 117", userResult);
-        
-        // if (userResult.length === 0) {
-        //   return res
-        //   .status(400)
-        //   .json({ message: "Username or email is incorrect" });
-        // }
-        // const user = userResult[0];
+//     try {
+//       const findUserQuery = "SELECT * FROM users WHERE email = $1";
+//       const userResult = await db.query(findUserQuery, [email]);
+//       console.log("line 117", userResult);
 
-      // Check if the user is locked out by userID and IP address
-      // let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
+// if (userResult.length === 0) {
+//   return res
+//   .status(400)
+//   .json({ message: "Username or email is incorrect" });
+// }
+// const user = userResult[0];
 
-      // if (lockedOutResult && lockedOutResult.locked === true) {
-      //   return res.status(400).json({ message: `${lockedOutResult.message}` });
-      // }
-      // if (!user) {
-      //   return res
-      //     .status(400)
-      //     .json({ message: "Username or email is incorrect" });
-      // }
+// Check if the user is locked out by userID and IP address
+// let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
 
-      // const passwordMatch = await bcrypt.compare(password, user.password);
+// if (lockedOutResult && lockedOutResult.locked === true) {
+//   return res.status(400).json({ message: `${lockedOutResult.message}` });
+// }
+// if (!user) {
+//   return res
+//     .status(400)
+//     .json({ message: "Username or email is incorrect" });
+// }
 
-      // if (!passwordMatch) {
-      //   const resultUser = await trackFailedLoginByUser(user.id, email);
-      //   const resultIP = await trackFailedLoginByIP(user.id, ipAddress);
+// const passwordMatch = await bcrypt.compare(password, user.password);
 
-      //   if (resultUser.locked === true || resultIP.locked === true) {
-      //     return res.status(400).json({
-      //       message:
-      //         "Too many failed attempts. You are locked out for 6 hours.",
-      //     });
-      //   }
-      //   return res.status(400).json({ message: "Password is incorrect" });
-      // }
+// if (!passwordMatch) {
+//   const resultUser = await trackFailedLoginByUser(user.id, email);
+//   const resultIP = await trackFailedLoginByIP(user.id, ipAddress);
 
-      // Once the user logs in, delete the login attempts record from Redis
-      // await redisClient.del(`login_attempts:${user.id}`);
-      // return res.json({
-      //   message: "Successfully logged in with email and password",
-      // });
+//   if (resultUser.locked === true || resultIP.locked === true) {
+//     return res.status(400).json({
+//       message:
+//         "Too many failed attempts. You are locked out for 6 hours.",
+//     });
+//   }
+//   return res.status(400).json({ message: "Password is incorrect" });
+// }
+
+// Once the user logs in, delete the login attempts record from Redis
+// await redisClient.del(`login_attempts:${user.id}`);
+// return res.json({
+//   message: "Successfully logged in with email and password",
+// });
 //     } catch (error) {
 //       res
 //         .status(500)
@@ -175,7 +175,7 @@ const { validateTOTP, registerTOTP } = require("../utils/TOTP");
 
 // Endpoint to verify the two-way authentication code
 // router.post("/verify2fa", loginRateLimiter, async (req, res) => {
-//   const { email, totpToken } = req.body;
+//   const { email, totp_token } = req.body;
 //   console.log("body,", req.body);
 
 //   try {
@@ -183,14 +183,14 @@ const { validateTOTP, registerTOTP } = require("../utils/TOTP");
 //     const userResult = await db.query(findUserQuery, [email]);
 //     let user = userResult[0];
 
-    // const totpValid = await validateTOTP(email, totpToken);
+// const totpValid = await validateTOTP(email, totp_token);
 
-    // if (q
-    //   totpValid.message == "Invalid TOTP token" ||
-    //   totpValid.message == "TOTP validation failed"
-    // ) {
-    //   return res.status(400).json({ message: "Invalid TOTP token" });
-    // }
+// if (q
+//   totpValid.message == "Invalid TOTP token" ||
+//   totpValid.message == "TOTP validation failed"
+// ) {
+//   return res.status(400).json({ message: "Invalid TOTP token" });
+// }
 
 //     if (totpValid.message == "TOTP token is valid") {
 //       const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
