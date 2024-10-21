@@ -3,9 +3,8 @@ const db = require("../db/db");
 
 const getUserByEmail = async (email) => {
   try {
-    const userInfo = await db.one("SELECT * FROM users WHERE email=$1", [
-      email,
-    ]);
+    const userInfo = await db.one("SELECT * FROM users WHERE email=$1", 
+      email);
     return userInfo;
   } catch (error) {
     return error;

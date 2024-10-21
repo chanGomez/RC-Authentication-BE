@@ -31,12 +31,13 @@ router.post("/forgot-password", async (req, res) => {
       resetTokenExpiry: resetTokenExpiry,
     });
 
+    const resetUrl =
+    process.env.NODE_ENV === "development"
+    ? `http://localhost:5173/reset-password?id=${foundUser.id}&token=${resetToken}`
+    : `https://authenticatorrrr.netlify.app/reset-password?id=${foundUser.id}&token=${resetToken}`;
+    
     console.log("reset token: ", resetToken);
-
-    //create reset url to sent in email
-    // const resetUrl = `https://authenticatorrrr.netlify.app/reset-password?id=${foundUser.id}&token=${resetToken}`;
-    const resetUrl = `http://localhost:5173/reset-password?id=${foundUser.id}&token=${resetToken}`;
-    console.log(resetUrl);
+    console.log("Reset URL: ", resetUrl);
 
     const resetEmail = await transporter.sendMail(
       createResetPasswordEmail(email, resetUrl)
@@ -56,7 +57,6 @@ router.post("/forgot-password", async (req, res) => {
 
 router.post("/reset-password", async (req, res) => {
   const { password, id, token } = req.body;
-  // const { id, token } = req.query;
   console.log(password, id, token);
 
   try {

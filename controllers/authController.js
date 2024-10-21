@@ -39,6 +39,18 @@ const { verifyTokenFromCookies } = require("../middleware/jwt-authorization");
 const { loginRateLimiter } = require("../middleware/rateLimiter");
 const { validateTOTP, registerTOTP } = require("../utils/TOTP");
 
+router.post("/find-email", async (req, res) => {
+  const { email } = req.body;
+  try {
+    const foundUser = await getUserByEmail(email);
+    res.status(200).json(foundUser);
+  } catch (error) {
+    res.status(500).json({
+      error: error
+    });
+  }
+});
+
 router.post(
   "/sign-up",
   validatePassword,
@@ -108,7 +120,7 @@ router.post(
       req.headers["x-forwarded-for"]?.split(",")[0] ||
       req.socket.remoteAddress ||
       req.ip;
-      console.log(ipAddress);
+    console.log(ipAddress);
 
     if (!ipAddress) {
       return res
@@ -117,37 +129,26 @@ router.post(
     }
 
     try {
-      const user = await getUserByEmail(email);
-      console.log(user);
-      
-
-      //check if user is locked out
-      let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
-      if (lockedOutResult.locked === true) {
-        return res.status(400).json({ message: `${lockedOutResult.message}` });
-      }
-
       const isPasswordValid = await bcrypt.compare(password, user.password);
-      console.log(isPasswordValid);
-      
+      console.log("password", isPasswordValid);
+
       if (!isPasswordValid) {
         //tracking failed attempts by user and IP address
-        const resultUser = await trackFailedLoginByUser(user.id, email);
-        const resultIP = await trackFailedLoginByIP(user.id, ipAddress);
-        if (resultUser.locked === true || resultIP.locked === true) {
-          return res.status(400).json({
-            message:
-              "Too many failed attempts. You are locked out for 6 hours.",
-          });
+        let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
+        if (lockedOutResult.locked === true) {
+          return res
+            .status(400)
+            .json({ message: `${lockedOutResult.message}` });
         }
-        return res.status(400).json({ message: "Password is incorrect" });
+
+        return res.status(400).json({ message: "Password is incorrect." });
       }
 
       await redisClient.del(`login_attempts:${user.id}`);
       return res.status(200).json({
         message: "Successfully logged in with email and password",
       });
-    } catch(error) {
+    } catch (error) {
       res.status(404).json({ error: error });
     }
   }

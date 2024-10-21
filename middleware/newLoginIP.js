@@ -11,16 +11,16 @@ const checkNewLoginByIP = async (req, res, next) => {
   const { email } = req.body;
 
   try {
+    const user = await getUserByEmail(email);
+    console.log("useerrrrrrr", user)
+    if (user.message == "No data returned from the query.") {
+      return res.status(400).json({ message: "Email is not registered." });
+    }
+
     const geo = geoip.lookup(ipAddress);
     const country = geo && geo.country ? geo.country : null;
     const ipInfo = `${ipAddress}|${country || "unknown"}`;
 
-    const user = await getUserByEmail(email);
-    console.log(user)
-
-    if (!user) {
-      return res.status(400).json({ message: "Email is not registered." });
-    }
 
     const query = "SELECT ip_address FROM sessions_by_ip WHERE userId = $1";
     const result = await db.query(query, [user.id]);

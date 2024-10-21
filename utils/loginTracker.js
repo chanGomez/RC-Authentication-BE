@@ -58,13 +58,17 @@ const isUserLockedByUserAndIP = async (userId, ipAddress) => {
   const ipResult = await redisClient.get(`lockedOut_IP:${ipAddress}`);
 
   if (accountResult) {
-    return { locked: true, message: "Account is temporarily locked." };
+    return { locked: true, message: "Too many failed login attempts. Account is temporarily locked for 6 hours." };
   }
 
   if (ipResult) {
     const ipResultObj = JSON.parse(ipResult);
     if (ipResultObj.locked == true) {
-      return { locked: true, message: "IP is temporarily blocked." };
+      return {
+        locked: true,
+        message:
+          "Too many failed login attempts with this IP. IP address is temporarily locked for 6 hours.",
+      };
     }
   }
 
