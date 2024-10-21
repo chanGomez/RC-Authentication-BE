@@ -16,7 +16,7 @@ app.get("/", (req, res) => {
 
 app.use("/auth", authRouter);
 app.use("/reset", resetRouter);
-app.use("/get-movies", movieRouter);
+app.use("/movies", movieRouter);
 
 app.use("*", (err, req, res, next) => {
   res.status(500).send("Something went wrong!");

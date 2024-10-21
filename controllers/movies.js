@@ -15,5 +15,8 @@ router.get("/no-token-needed", async (req, res) => {
 router.get("/cookie-token", verifyTokenFromCookies,  async (req, res) => {
   res.status(200).send("Token verified through cookies!!");
 });
+router.get("/get-movies", verifyTokenFromCookies, async (req, res) => {
+  res.status(200).send("Movie route only seen with token verified through cookies!!");
+});
 
 module.exports = router;
