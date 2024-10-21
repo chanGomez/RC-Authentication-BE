@@ -35,7 +35,7 @@ const {
 } = require("../utils/loginTracker");
 
 const { checkNewLoginByIP } = require("../middleware/newLoginIP");
-const { verifyToken } = require("../middleware/jwt-authorization");
+const { verifyTokenFromCookies } = require("../middleware/jwt-authorization");
 const { loginRateLimiter } = require("../middleware/rateLimiter");
 const { validateTOTP, registerTOTP } = require("../utils/TOTP");
 
@@ -100,8 +100,8 @@ router.post("/enable2fa", async (req, res) => {
 
 router.post(
   "/sign-in",
-//   loginRateLimiter,
-//   checkNewLoginByIP,
+  loginRateLimiter,
+  checkNewLoginByIP,
   async (req, res) => {
     const { email, password } = req.body;
     const ipAddress =
@@ -168,6 +168,15 @@ router.post("/verify2fa", loginRateLimiter, async (req, res) => {
     const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
       expiresIn: "1h",
     });
+
+    // Set JWT token in a secure HttpOnly cookie
+    res.cookie("jwt_token", jwtToken, {
+      httpOnly: true, // Prevent JavaScript from accessing the token
+      secure: process.env.NODE_ENV === "production", // Use HTTPS in production
+      sameSite: "Strict", // Protect against CSRF
+      maxAge: 60 * 60 * 1000, // 1 hour expiration
+    });
+
     //toke session started for session management  in redis
     await redisClient.set(`session_token:${user.id}`, jwtToken, { EX: 3600 });
     res.json({
@@ -179,7 +188,7 @@ router.post("/verify2fa", loginRateLimiter, async (req, res) => {
   }
 });
 
-router.post("/logout", verifyToken, async (req, res) => {
+router.post("/logout", verifyTokenFromCookies, async (req, res) => {
   const token = req.user;
   console.log(token);
 

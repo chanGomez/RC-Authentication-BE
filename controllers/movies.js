@@ -6,14 +6,14 @@ const router = express.Router();
 
 
 const {
-  verifyToken,
+  verifyTokenFromCookies,
 } = require("../middleware/jwt-authorization");
 
-router.get( "/", verifyToken,  async (req, res) => {
-      res.status(200).send("movie route! can only be reached with valid token!");
-})
-router.get("/no-token", async (req, res) => {
+router.get("/no-token-needed", async (req, res) => {
   res.status(200).send("movie route with no token needed!!!");
+});
+router.get("/cookie-token", verifyTokenFromCookies,  async (req, res) => {
+  res.status(200).send("Token verified through cookies!!");
 });
 
 module.exports = router;

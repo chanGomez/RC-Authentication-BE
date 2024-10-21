@@ -28,7 +28,7 @@ function authenticateToken(req, res, next) {
 const MAX_FAILED_ATTEMPTS = 5;
 const BLOCK_DURATION = 900;
 
-const verifyToken = async (req, res, next) => {
+const verifyTokenFromHeaders = async (req, res, next) => {
   const token =
     req.headers.authorization && req.headers.authorization.split(" ")[1];
       const ipAddress =
@@ -85,8 +85,26 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
+const verifyTokenFromCookies = (req, res, next) => {
+  const token = req.cookies.token; // Get the token from the cookies
+
+  if (!token) {
+    return res.status(403).json({ message: "No token provided" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    req.userId = decoded.userId; // Attach userId to request object
+    next();
+  });
+};
+
 
 module.exports = {
   authenticateToken,
-  verifyToken,
+  verifyTokenFromHeaders,
+  verifyTokenFromCookies,
 };

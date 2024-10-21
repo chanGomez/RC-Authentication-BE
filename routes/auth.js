@@ -17,7 +17,7 @@
 
 // //middleware
 // const { checkNewLoginByIP } = require("../middleware/newLoginIP");
-// const { verifyToken } = require("../middleware/jwt-authorization");
+// const { verifyTokenFromHeaders } = require("../middleware/jwt-authorization");
 // const { loginRateLimiter } = require("../middleware/rateLimiter");
 // const {
 //   validatePassword,
@@ -210,7 +210,7 @@
 //   }
 // });
 
-// router.post("/logout", verifyToken, async (req, res) => {
+// router.post("/logout", verifyTokenFromHeaders, async (req, res) => {
 //   const token = req.user;
 //   console.log(token);
 
