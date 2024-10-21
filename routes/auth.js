@@ -82,22 +82,25 @@ router.post(
 );
 
 // Endpoint to endable the two authentication
-router.post("/enable2fa", async (req, res) => {
+router.post("/enable", async (req, res) => {
   const { email } = req.body;
 
   try {
     // Generate TOTP Secret for the user
-    const { qrCode, manualKey } = await registerTOTP(email);
+    const { qrCode, manualKey, token } = await registerTOTP(email); // Destructure token
+
+    console.log("Generated TOTP Token from enable2fa route:", token); // Log the token here
 
     res.status(201).json({
-      message: "User registered, qrcode created " + email,
+      message: "User registered, QR code created " + email,
       qrCode: qrCode, // Return QR code for user to scan
       manualKey: manualKey, // Provide manual key as fallback
+      token: token, // Optionally return the token to the client
     });
   } catch (error) {
     res
       .status(500)
-      .json({ message: "Error during qrcode creation", error: error.message });
+      .json({ message: "Error during QR code creation", error: error.message });
   }
 });
 
@@ -108,29 +111,49 @@ router.post(
   async (req, res) => {
     const { email, password } = req.body;
     const ipAddress =
-      req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
+      req.headers["x-forwarded-for"]?.split(",")[0] ||
+      req.socket.remoteAddress ||
+      req.ip;
 
-    try {
-      const findUserQuery = "SELECT * FROM users WHERE email = $1";
-      const userResult = await db.query(findUserQuery, [email]);
+      if (!ipAddress) {
+        return res
+          .status(400)
+          .json({ message: "Unable to determine IP address" });
+      }
 
-      if (userResult.length === 0) {
+      
+      
+      
+      try {
+        const findUserQuery = "SELECT * FROM users WHERE email = $1";
+        const userResult = await db.query(findUserQuery, [email]);
+        console.log("line 117", userResult);
+        
+        if (userResult.length === 0) {
+          return res
+          .status(400)
+          .json({ message: "Username or email is incorrect" });
+        }
+        const user = userResult[0];
+
+      // Check if the user is locked out by userID and IP address
+      let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
+
+      if (lockedOutResult && lockedOutResult.locked === true) {
+        return res.status(400).json({ message: `${lockedOutResult.message}` });
+      }
+      if (!user) {
         return res
           .status(400)
           .json({ message: "Username or email is incorrect" });
       }
-      const user = userResult[0];
-
-      // Check if the user is locked out by userID and IP address
-      let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
-      if (lockedOutResult.locked === true) {
-        return res.status(400).json({ message: `${lockedOutResult.message}` });
-      }
 
       const passwordMatch = await bcrypt.compare(password, user.password);
+
       if (!passwordMatch) {
         const resultUser = await trackFailedLoginByUser(user.id, email);
         const resultIP = await trackFailedLoginByIP(user.id, ipAddress);
+
         if (resultUser.locked === true || resultIP.locked === true) {
           return res.status(400).json({
             message:
@@ -140,10 +163,10 @@ router.post(
         return res.status(400).json({ message: "Password is incorrect" });
       }
 
-      //once user logins the login attempts gets deleted
+      // Once the user logs in, delete the login attempts record from Redis
       await redisClient.del(`login_attempts:${user.id}`);
       return res.json({
-        message: "Successfully logged with email and password",
+        message: "Successfully logged in with email and password",
       });
     } catch (error) {
       res
@@ -156,10 +179,13 @@ router.post(
 // Endpoint to verify the two-way authentication code
 router.post("/verify2fa", async (req, res) => {
   const { email, totpToken } = req.body;
+  console.log("body,", req.body);
 
+  
   try {
     const findUserQuery = "SELECT * FROM users WHERE email = $1";
     const userResult = await db.query(findUserQuery, [email]);
+    console.log("secret:", userResult.totpSecret)
 
     // Check if the user has TOTP enabled by checking their totpSecret in the database
     if (userResult.totpSecret) {
@@ -176,7 +202,9 @@ router.post("/verify2fa", async (req, res) => {
     });
 
     //toke session started for session management
-    await redisClient.set(`session_token:${userResult.id}`, jwtToken, { EX: 3600 });
+    await redisClient.set(`session_token:${userResult.id}`, jwtToken, {
+      EX: 3600,
+    });
     res.json({ message: "sign in successful ", jwtToken: jwtToken });
   } catch (error) {
     res

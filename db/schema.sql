@@ -9,7 +9,7 @@ id SERIAL PRIMARY KEY,
 username VARCHAR(100) UNIQUE NOT NULL,
 email VARCHAR(200) UNIQUE NOT NULL,
 password VARCHAR(100) NOT NULL,
-totpSecret VARCHAR(255)
+totpSecret VARCHAR(300)
 );
 
 CREATE TABLE token_blacklist (
