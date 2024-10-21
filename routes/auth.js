@@ -121,9 +121,6 @@ router.post(
           .json({ message: "Unable to determine IP address" });
       }
 
-      
-      
-      
       try {
         const findUserQuery = "SELECT * FROM users WHERE email = $1";
         const userResult = await db.query(findUserQuery, [email]);
@@ -185,27 +182,29 @@ router.post("/verify2fa", async (req, res) => {
   try {
     const findUserQuery = "SELECT * FROM users WHERE email = $1";
     const userResult = await db.query(findUserQuery, [email]);
-    console.log("secret:", userResult.totpSecret)
+    let user = userResult[0];
 
-    // Check if the user has TOTP enabled by checking their totpSecret in the database
-    if (userResult.totpSecret) {
-      // Validate the TOTP token
-      const totpValid = validateTOTP(email, totpToken); // Use the provided token
+      const totpValid = await validateTOTP(email, totpToken); 
 
-      if (!totpValid) {
+      if (
+        totpValid.message == "Invalid TOTP token" ||
+        totpValid.message == "TOTP validation failed"
+      ) {
         return res.status(400).json({ message: "Invalid TOTP token" });
       }
-    }
 
-    const jwtToken = jwt.sign({ userId: userResult.id }, JWT_SECRET, {
-      expiresIn: "1h",
-    });
+      if (totpValid.message == "TOTP token is valid") {
+        const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
+          expiresIn: "1h",
+        });
+    
+        //toke session started for session management
+        await redisClient.set(`session_token:${user.id}`, jwtToken, {
+          EX: 3600,
+        });
+        res.json({ message: "sign in successful ", jwtToken: jwtToken });
+      }
 
-    //toke session started for session management
-    await redisClient.set(`session_token:${userResult.id}`, jwtToken, {
-      EX: 3600,
-    });
-    res.json({ message: "sign in successful ", jwtToken: jwtToken });
   } catch (error) {
     res
       .status(500)

@@ -51,17 +51,16 @@ async function validateTOTP(email, token) {
       await db.query("SELECT * FROM users WHERE email = $1", [email])
     )[0];
 
-    if (!user || !user.totpSecret) {
+
+    if (!user || !user.totpsecret) {
       return { message: "User not found or no TOTP secret registered." };
     }
 
-    console.log("User TOTP Secret:", user.totpSecret);
-
     const isValid = speakeasy.totp.verify({
-      secret: user.totpSecret,
+      secret: user.totpsecret,
       encoding: "base32",
       token: token,
-      window: 1, // Small window for extra tolerance
+      window: 2, // Small window for extra tolerance
       algorithm: "sha1", // Make sure this matches your secret generation
     });
 
