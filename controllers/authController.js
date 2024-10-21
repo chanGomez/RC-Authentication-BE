@@ -28,6 +28,12 @@ const {
   validateUsername,
 } = require("../middleware/validate");
 
+const {
+  isUserLockedByUserAndIP,
+  trackFailedLoginByUser,
+  trackFailedLoginByIP,
+} = require("../utils/loginTracker");
+
 const { checkNewLoginByIP } = require("../middleware/newLoginIP");
 const { verifyToken } = require("../middleware/jwt-authorization");
 const { loginRateLimiter } = require("../middleware/rateLimiter");
@@ -94,14 +100,15 @@ router.post("/enable2fa", async (req, res) => {
 
 router.post(
   "/sign-in",
-  loginRateLimiter,
-  checkNewLoginByIP,
+//   loginRateLimiter,
+//   checkNewLoginByIP,
   async (req, res) => {
     const { email, password } = req.body;
     const ipAddress =
       req.headers["x-forwarded-for"]?.split(",")[0] ||
       req.socket.remoteAddress ||
       req.ip;
+      console.log(ipAddress);
 
     if (!ipAddress) {
       return res
@@ -111,6 +118,8 @@ router.post(
 
     try {
       const user = await getUserByEmail(email);
+      console.log(user);
+      
 
       //check if user is locked out
       let lockedOutResult = await isUserLockedByUserAndIP(user.id, ipAddress);
@@ -119,6 +128,8 @@ router.post(
       }
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
+      console.log(isPasswordValid);
+      
       if (!isPasswordValid) {
         //tracking failed attempts by user and IP address
         const resultUser = await trackFailedLoginByUser(user.id, email);
@@ -136,7 +147,7 @@ router.post(
       return res.status(200).json({
         message: "Successfully logged in with email and password",
       });
-    } catch (error) {
+    } catch(error) {
       res.status(404).json({ error: error });
     }
   }

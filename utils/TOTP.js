@@ -62,11 +62,11 @@ async function validateTOTP(email, token) {
       algorithm: "sha1", // Make sure this matches your secret generation
     });
     const
-     checktoken = speakeasy.totp({
+     testingToken = speakeasy.totp({
       secret: user.totp_secret, // Replace with the user's actual totpSecret
       encoding: "base32",
     });
-    console.log("Test TOTP Token:", checktoken);
+    console.log("Test TOTP Token:", testingToken);
 
     return isValid 
   } catch (err) {
