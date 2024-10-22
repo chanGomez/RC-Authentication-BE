@@ -178,7 +178,7 @@ router.post("/verify2fa", loginRateLimiter, async (req, res) => {
       maxAge: 60 * 60 * 1000, // 1 hour expiration
     });
 
-    //toke session started for session management  in redis
+    //token session started for session management  in redis
     await redisClient.set(`session_token:${user.id}`, jwtToken, { EX: 3600 });
     res.json({
       message: "2 factor verification successful",
@@ -190,7 +190,7 @@ router.post("/verify2fa", loginRateLimiter, async (req, res) => {
 });
 
 router.post("/logout", verifyTokenFromCookies, async (req, res) => {
-  const token = req.user;
+  const token = req.cookies.authToken;
   console.log(token);
 
   if (!token) {
@@ -198,11 +198,20 @@ router.post("/logout", verifyTokenFromCookies, async (req, res) => {
   }
 
   try {
-    const insertTokenToBlacklist = blacklistToken(token);
-    res.json({
-      insertTokenToBlacklist: insertTokenToBlacklist,
-      message: "Logged out successfully",
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    // Remove session from Redis
+    await redisClient.del(`session_token:${userId}`);
+
+    // Clear the cookie
+    res.clearCookie("authToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict",
     });
+
+    return res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     res
       .status(500)
