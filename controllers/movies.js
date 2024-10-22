@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
+const { getAllMovies } = require("../queries/movieQueries")
 
 const {
   verifyTokenFromCookies,
@@ -9,11 +10,14 @@ const {
 router.get("/", async (req, res) => {
   res.status(200).send("movie route with no token needed!!!");
 });
-router.get("/cookie-token", verifyTokenFromCookies,  async (req, res) => {
-  res.status(200).send("Token verified through cookies!!");
-});
+
 router.get("/get-movies", verifyTokenFromCookies, async (req, res) => {
-  res.status(200).send("Movie route only seen with token verified through cookies!!");
+  const allUsers = await getAllMovies();
+  if (allUsers[0]) {
+    res.status(200).json(allUsers);
+  } else {
+    res.status(500).json({ error: "Server Error!" });
+  }
 });
 
 module.exports = router;

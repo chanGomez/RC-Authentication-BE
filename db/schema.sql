@@ -31,3 +31,14 @@ userId INT NOT NULL REFERENCES users(id),
 token TEXT NOT NULL,
 expiration_time TIMESTAMP NOT NULL
 );  
+
+CREATE TABLE movies (
+  id SERIAL PRIMARY KEY,               
+  title VARCHAR(255) NOT NULL,         
+  genre VARCHAR(100) NOT NULL,         
+  release_year INT NOT NULL,            
+  director VARCHAR(255),              
+  rating DECIMAL(2, 1),               
+  duration INT NOT NULL,             
+  description TEXT,              
+);
