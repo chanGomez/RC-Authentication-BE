@@ -12,9 +12,9 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/get-movies", verifyTokenFromCookies, async (req, res) => {
-  const allUsers = await getAllMovies();
-  if (allUsers[0]) {
-    res.status(200).json(allUsers);
+  const allMovies = await getAllMovies();
+  if (allMovies[0]) {
+    res.status(200).json(allMovies);
   } else {
     res.status(500).json({ error: "Server Error!" });
   }

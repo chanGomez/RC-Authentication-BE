@@ -3,15 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
-const redisClient = require("redis").createClient();
-
-//turn redis on
-redisClient.on("error", (err) => {
-  console.error("Redis error:", err);
-});
-redisClient.connect().then(() => {
-  console.log("Connected to Redis in auth");
-});
+const redisClient = require("../utils/redisClient");
 
 const {
   getUserByEmail,

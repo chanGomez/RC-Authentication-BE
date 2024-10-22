@@ -1,13 +1,5 @@
-const redisClient = require("redis").createClient();
+const redisClient = require("../utils/redisClient");
 const { transporter, lockedOutEmail } = require("./nodeMailer");
-
-redisClient.on("error", (err) => {
-  console.error("Redis error:", err);
-});
-
-redisClient.connect().then(() => {
-  console.log("Connected to Redis login tracker");
-});
 
 const trackFailedLoginByUser = async (userId, email) => {
   const key = `login_attempts:${userId}`;
@@ -58,7 +50,11 @@ const isUserLockedByUserAndIP = async (userId, ipAddress) => {
   const ipResult = await redisClient.get(`lockedOut_IP:${ipAddress}`);
 
   if (accountResult) {
-    return { locked: true, message: "Too many failed login attempts. Account is temporarily locked for 6 hours." };
+    return {
+      locked: true,
+      message:
+        "Too many failed login attempts. Account is temporarily locked for 6 hours.",
+    };
   }
 
   if (ipResult) {

@@ -1,14 +1,5 @@
 const rateLimit = require("express-rate-limit");
-const redis = require("redis");
-const redisClient = redis.createClient();
-
-redisClient.on("error", (err) => {
-  console.error("Redis error:", err);
-});
-
-redisClient.connect().then(() => {
-  console.log("Connected to Redis in rate limiter");
-});
+const redisClient = require("../utils/redisClient");
 
 const loginRateLimiter = async (req, res, next) => {
   const ipAddress =

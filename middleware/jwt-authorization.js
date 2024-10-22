@@ -1,13 +1,6 @@
 const jwt = require("jsonwebtoken");
-const redisClient = require("redis").createClient();
+const redisClient = require("../utils/redisClient");
 
-redisClient.on("error", (err) => {
-  console.error("Redis error:", err);
-});
-
-redisClient.connect().then(() => {
-  console.log("Connected to Redis in JWT token auth");
-});
 
 function authenticateToken(req, res, next) {
     const token = req.headers["authorization"]?.split(" ")[1];
