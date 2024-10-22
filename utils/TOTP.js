@@ -58,21 +58,24 @@ async function validateTOTP(email, token) {
       secret: user.totp_secret,
       encoding: "base32",
       token: token,
-      window: 2, // Small window for extra tolerance
-      algorithm: "sha1", // Make sure this matches your secret generation
-    });
-    const
-     testingToken = speakeasy.totp({
-      secret: user.totp_secret, // Replace with the user's actual totpSecret
+      window: 2, // Tolerance for time drift
+      algorithm: "sha1", // Ensure this matches your generation algorithm
+    });z
+
+    const testingToken = speakeasy.totp({
+      secret: user.totp_secret,
       encoding: "base32",
     });
-    console.log("Test TOTP Token:", testingToken);
 
-    return isValid 
+    console.log("Testing generated TOTP Token (on backend):", testingToken);
+    console.log("Validation result:", isValid);
+
+    return isValid;
   } catch (err) {
-    console.log(err);
+    console.log("Error during TOTP validation:", err);
     return { message: "TOTP validation failed", error: err };
   }
 }
+
 
 module.exports = { validateTOTP, registerTOTP };

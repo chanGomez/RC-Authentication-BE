@@ -14,8 +14,7 @@ INSERT INTO sessions_by_ip (userId, login_attempt_time, ip_address) VALUES
 (4, '2024-10-17 17:45:55', '192.168.0.23'),
 (5, '2024-10-17 18:35:20', '203.0.113.45');
 
-INSERT INTO movies (title, genre, release_year, director, rating, duration, description)
-VALUES 
+INSERT INTO movies (title, genre, release_year, director, rating, duration, description) VALUES 
   ('Inception', 'Sci-Fi', 2010, 'Christopher Nolan', 8.8, 148, 'A mind-bending thriller about dream invasion.'),
   ('The Dark Knight', 'Action', 2008, 'Christopher Nolan', 9.0, 152, 'Batman faces the Joker in Gotham City.'),
   ('The Matrix', 'Sci-Fi', 1999, 'The Wachowskis', 8.7, 136, 'A computer hacker learns about the true nature of his reality.'),

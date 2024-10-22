@@ -36,9 +36,9 @@ CREATE TABLE movies (
   id SERIAL PRIMARY KEY,               
   title VARCHAR(255) NOT NULL,         
   genre VARCHAR(100) NOT NULL,         
-  release_year INT NOT NULL,            
+  release_year INT NOT NULL,       
   director VARCHAR(255),              
-  rating DECIMAL(2, 1),               
-  duration INT NOT NULL,             
-  description TEXT,              
+  rating DECIMAL(2, 1),     
+  duration INT NOT NULL,     
+  description TEXT
 );

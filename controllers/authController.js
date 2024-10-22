@@ -2,7 +2,6 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET;
 const redisClient = require("../utils/redisClient");
 
 const {
@@ -45,6 +44,8 @@ router.post(
   validateUsername,
   async (req, res) => {
     const { username, email, password } = req.body;
+    console.log(req.body);
+    
     try {
       //check if user already exists
       const foundUserByEmail = await getUserByEmail(email);
@@ -147,16 +148,16 @@ router.post("/verify2fa", loginRateLimiter, async (req, res) => {
 
   try {
     const user = await getUserByEmail(email);
+    
     //verify token sent by user
     const isTOTPValid = await validateTOTP(email, totp_token);
     if (!isTOTPValid) {
       return res.status(400).json({ message: "Invalid TOTP token" });
     }
 
-    const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
+    const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    
 
     // Set JWT token in a secure HttpOnly cookie
     res.cookie("jwt_token", jwtToken, {
@@ -173,7 +174,7 @@ router.post("/verify2fa", loginRateLimiter, async (req, res) => {
       jwtToken: jwtToken,
     });
   } catch (error) {
-    res.status(404).json({ error: error });
+    res.status(500).json({ error: error });
   }
 });
 
