@@ -1,10 +1,8 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const db = require("../db/db");
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
-const crypto = require("crypto");
 const redisClient = require("redis").createClient();
 
 //turn redis on
@@ -19,7 +17,6 @@ const {
   getUserByEmail,
   getUserByUsername,
   createUser,
-  blacklistToken,
 } = require("../queries/authQueries");
 
 const {
@@ -30,8 +27,6 @@ const {
 
 const {
   isUserLockedByUserAndIP,
-  trackFailedLoginByUser,
-  trackFailedLoginByIP,
 } = require("../utils/loginTracker");
 
 const { checkNewLoginByIP } = require("../middleware/newLoginIP");
@@ -169,6 +164,7 @@ router.post("/verify2fa", loginRateLimiter, async (req, res) => {
     const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
       expiresIn: "1h",
     });
+    
 
     // Set JWT token in a secure HttpOnly cookie
     res.cookie("jwt_token", jwtToken, {

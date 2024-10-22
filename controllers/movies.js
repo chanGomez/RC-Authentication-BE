@@ -1,7 +1,4 @@
 const express = require("express");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const db = require("../db/db");
 const router = express.Router();
 
 
@@ -9,7 +6,7 @@ const {
   verifyTokenFromCookies,
 } = require("../middleware/jwt-authorization");
 
-router.get("/no-token-needed", async (req, res) => {
+router.get("/", async (req, res) => {
   res.status(200).send("movie route with no token needed!!!");
 });
 router.get("/cookie-token", verifyTokenFromCookies,  async (req, res) => {
