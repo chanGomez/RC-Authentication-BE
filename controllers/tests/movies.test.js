@@ -10,7 +10,6 @@ describe("GET /movies", () => {
   });
 });
 
-
 describe("GET /cookie-token", () => {
   it("should return 200 and message when token is valid", async () => {
     // Generate a valid token using the same secret and structure

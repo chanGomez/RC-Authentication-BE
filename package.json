@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "test": "jest",
+    "test": "NODE_ENV=test jest",
     "dev": "nodemon server.js",
     "db": "psql -U postgres -f db/schema.sql",
     "seed": "psql -U postgres -f db/seed.sql",

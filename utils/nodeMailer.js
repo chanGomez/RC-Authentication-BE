@@ -3,6 +3,7 @@ const nodemailer = require("nodemailer");
 const transporter = nodemailer.createTransport({
   host: "smtp.ethereal.email",
   port: 587,
+  secure: false,
   auth: {
     user: "delfina.jacobson@ethereal.email",
     pass: "m9VPxMVnGDzsV7JKSX",
@@ -42,7 +43,7 @@ function newBrowserAlert(email) {
     to: email,
     subject: "Someone tried to login to your account.",
     html: `
-        <p>There were multiple failed login attempts to your account.</p>
+        <p>Your account was logged in from a new IP address. Was this you?</p>
         <p>If this was not you, please reset your password immediately.</p>
         <p>If it was you, please ignore this email.</p>
       `,

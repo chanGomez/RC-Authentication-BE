@@ -16,7 +16,9 @@ db.connect()
   .then((obj) => {
     // const serverVersion = obj.client.serverVersion;
     // console.log("Server version: " + serverVersion);
-    console.log("postgres connection established");
+    if ((process.env.NODE_ENV !== "test")) {
+      console.log("postgres connection established");
+    }
     obj.done();
   })
   .catch((error) => {
