@@ -11,7 +11,6 @@ const checkNewLoginByIP = async (req, res, next) => {
 
   try {
     const user = await getUserByEmail(email);
-    console.log("useerrrrrrr", user);
     if (user.message == "No data returned from the query.") {
       return res.status(400).json({ message: "Email is not registered." });
     }
