@@ -21,7 +21,9 @@ async function registerTOTP(email) {
 
   const issuer = "auth";
   const otpauthURL = `otpauth://totp/${issuer}:${email}?secret=${secret.base32}&issuer=${issuer}`;
-  console.log("Generated OTPAuth URL: ", otpauthURL);
+
+  const qrCode = await QRCode.toDataURL(otpauthURL);
+  console.log("QR Code URL: ", qrCode);
 
   // Generate a TOTP token for the user
   const token = speakeasy.totp({
@@ -29,14 +31,15 @@ async function registerTOTP(email) {
     encoding: "base32",
   });
 
+  console.log("Generated TOTP Token:", token, ",manual key:", secret.base32); // Log the generated TOTP token
+
   return {
-    otpauthURL, // Send this to the frontend
+    qrCode,
+    otpauthURL,
     manualKey: secret.base32,
-    token,
+    token, // Include the token in the return value
   };
 }
-
-
 
 function isValidBase32(str) {
   const base32Regex = /^[A-Z2-7]*$/;

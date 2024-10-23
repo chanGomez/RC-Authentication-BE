@@ -69,11 +69,14 @@ router.post("/enable2fa", async (req, res) => {
     const foundUserByEmail = await getUserByEmail(email);
 
     // Generate TOTP and save Secret for the user
-    const { otpauthURL, manualKey, token } = await registerTOTP(email);
+    const { qrCode, otpauthURL, manualKey, token } = await registerTOTP(email);
     console.log("enable user qrcode info: ", otpauthURL, manualKey, token);
+    console.log("qrcode ", qrCode);
+
 
     res.status(201).json({
       message: "User registered, QR code created",
+      qrCode: qrCode,
       otpauthURL: otpauthURL,
       manualKey: manualKey, // Provide manual key as fallback
       token: token, // Token for testing purposes
@@ -106,7 +109,7 @@ router.post(
 
     try {
       const user = await getUserByEmail(email);
-      
+
       const isPasswordValid = await bcrypt.compare(password, user.password);
       console.log("password", isPasswordValid);
 
