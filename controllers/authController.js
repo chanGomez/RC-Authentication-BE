@@ -25,18 +25,6 @@ const { verifyTokenFromCookies } = require("../middleware/jwt-authorization");
 const { loginRateLimiter } = require("../middleware/rateLimiter");
 const { validateTOTP, registerTOTP } = require("../utils/TOTP");
 
-router.post("/find-email", async (req, res) => {
-  const { email } = req.body;
-  try {
-    const foundUser = await getUserByEmail(email);
-    res.status(200).json(foundUser);
-  } catch (error) {
-    res.status(500).json({
-      error: error
-    });
-  }
-});
-
 router.post(
   "/sign-up",
   validatePassword,
@@ -49,8 +37,15 @@ router.post(
     try {
       //check if user already exists
       const foundUserByEmail = await getUserByEmail(email);
+      if(foundUserByEmail.id){
+      res
+        .status(200)
+        .json({ message: "Email already registered." });
+      }
       const foundUserByUsername = await getUserByUsername(username);
-
+      if (foundUserByUsername.id) {
+        res.status(200).json({ message: "Username not available." });
+      }
       //make user
       const hashedPassword = await bcrypt.hash(password, 10);
       const userCreate = await createUser({
@@ -59,11 +54,7 @@ router.post(
         hashedPassword: hashedPassword,
       });
 
-      res.status(200).json({
-        foundUserByEmail: foundUserByEmail,
-        foundUserByUsername: foundUserByUsername,
-        userCreate: userCreate,
-      });
+      res.status(200).json({ message: "User was successfully created in database."});
     } catch (error) {
       res.status(500).json({
         message: "Error during Login with email and password",
@@ -84,8 +75,7 @@ router.post("/enable2fa", async (req, res) => {
     console.log("enable user qrcode info: ", qrCode, manualKey, token);
 
     res.status(201).json({
-      foundUserByEmail: foundUserByEmail,
-      message: "User registered, QR code created " + email,
+      message: "User registered, QR code created",
       qrCode: qrCode, // Return QR code for user to scan
       manualKey: manualKey, // Provide manual key as fallback
       token: token, // Token for testing purposes
@@ -208,4 +198,17 @@ router.post("/logout", verifyTokenFromCookies, async (req, res) => {
   }
 });
 
+router.get("/find-email", async (req, res) => {
+  const { email } = req.body;
+  try {
+    const foundUser = await getUserByEmail(email);
+    console.log(foundUser.id);
+    
+    res.status(200).json(foundUser);
+  } catch (error) {
+    res.status(500).json({
+      error: error,
+    });
+  }
+});
 module.exports = router;
