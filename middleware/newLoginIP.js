@@ -24,7 +24,7 @@ const checkNewLoginByIP = async (req, res, next) => {
     console.log(result);
 
     // First time login, save IP address
-    if (result) {
+    if (!result) {
       const insertQuery =
         "INSERT INTO sessions_by_ip (userId, ip_address) VALUES ($1, $2)";
       await db.query(insertQuery, [user.id, ipInfo]);

@@ -59,7 +59,7 @@ async function validateTOTP(email, token) {
       token: token,
       window: 2, // Tolerance for time drift
       algorithm: "sha1", // Ensure this matches your generation algorithm
-    });z
+    });
 
     const testingToken = speakeasy.totp({
       secret: user.totp_secret,

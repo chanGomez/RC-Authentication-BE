@@ -16,9 +16,7 @@ const {
   validateUsername,
 } = require("../middleware/validate");
 
-const {
-  isUserLockedByUserAndIP,
-} = require("../utils/loginTracker");
+const { isUserLockedByUserAndIP } = require("../utils/loginTracker");
 
 const { checkNewLoginByIP } = require("../middleware/newLoginIP");
 const { verifyTokenFromCookies } = require("../middleware/jwt-authorization");
@@ -33,14 +31,12 @@ router.post(
   async (req, res) => {
     const { username, email, password } = req.body;
     console.log(req.body);
-    
+
     try {
       //check if user already exists
       const foundUserByEmail = await getUserByEmail(email);
-      if(foundUserByEmail.id){
-      res
-        .status(200)
-        .json({ message: "Email already registered." });
+      if (foundUserByEmail.id) {
+        res.status(200).json({ message: "Email already registered." });
       }
       const foundUserByUsername = await getUserByUsername(username);
       if (foundUserByUsername.id) {
@@ -54,7 +50,9 @@ router.post(
         hashedPassword: hashedPassword,
       });
 
-      res.status(200).json({ message: "User was successfully created in database."});
+      res
+        .status(200)
+        .json({ message: "User was successfully created in database." });
     } catch (error) {
       res.status(500).json({
         message: "Error during Login with email and password",
@@ -107,6 +105,8 @@ router.post(
     }
 
     try {
+      const user = await getUserByEmail(email);
+      
       const isPasswordValid = await bcrypt.compare(password, user.password);
       console.log("password", isPasswordValid);
 
@@ -127,7 +127,7 @@ router.post(
         message: "Successfully logged in with email and password",
       });
     } catch (error) {
-      res.status(404).json({ error: error });
+      res.status(500).json({ error: "Error in sign in." });
     }
   }
 );
@@ -138,7 +138,7 @@ router.post("/verify2fa", loginRateLimiter, async (req, res) => {
 
   try {
     const user = await getUserByEmail(email);
-    
+
     //verify token sent by user
     const isTOTPValid = await validateTOTP(email, totp_token);
     if (!isTOTPValid) {
@@ -203,7 +203,7 @@ router.get("/find-email", async (req, res) => {
   try {
     const foundUser = await getUserByEmail(email);
     console.log(foundUser.id);
-    
+
     res.status(200).json(foundUser);
   } catch (error) {
     res.status(500).json({

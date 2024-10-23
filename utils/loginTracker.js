@@ -8,7 +8,7 @@ const trackFailedLoginByUser = async (userId, email) => {
   if (attempts) {
     await redisClient.incr(key);
 
-    if (attempts >= 2) {
+    if (attempts >= 4) {
       await transporter.sendMail(lockedOutEmail(email));
       await redisClient.set(`lockedOutUser:${userId}`, "true", { EX: 21600 });
       await redisClient.del(key);
@@ -29,7 +29,7 @@ const trackFailedLoginByIP = async (userID, ipAddress) => {
   if (attempts) {
     await redisClient.incr(ipKey);
 
-    if (attempts >= 2) {
+    if (attempts >= 4) {
       await redisClient.set(
         `lockedOut_IP:${ipAddress}`,
         { locked: "true", userID: userID },
