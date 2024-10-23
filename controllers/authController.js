@@ -71,12 +71,12 @@ router.post("/enable2fa", async (req, res) => {
     const foundUserByEmail = await getUserByEmail(email);
 
     // Generate TOTP and save Secret for the user
-    const { qrCode, manualKey, token } = await registerTOTP(email);
-    console.log("enable user qrcode info: ", qrCode, manualKey, token);
+    const { otpauthURL, manualKey, token } = await registerTOTP(email);
+    console.log("enable user qrcode info: ", otpauthURL, manualKey, token);
 
     res.status(201).json({
       message: "User registered, QR code created",
-      qrCode: qrCode, // Return QR code for user to scan
+      otpauthURL: otpauthURL,
       manualKey: manualKey, // Provide manual key as fallback
       token: token, // Token for testing purposes
     });

@@ -18,11 +18,10 @@ async function registerTOTP(email) {
       message: "Could not update the secret",
     };
   }
-  console.log("secretttt: ", updatedSecret);
 
-  // Generate the otpauth URL for QR code
-  const otpauthURL = secret.otpauth_url;
-  const qrCode = await QRCode.toDataURL(otpauthURL);
+  const issuer = "auth";
+  const otpauthURL = `otpauth://totp/${issuer}:${email}?secret=${secret.base32}&issuer=${issuer}`;
+  console.log("Generated OTPAuth URL: ", otpauthURL);
 
   // Generate a TOTP token for the user
   const token = speakeasy.totp({
@@ -30,14 +29,14 @@ async function registerTOTP(email) {
     encoding: "base32",
   });
 
-  console.log("Generated TOTP Token:", token); // Log the generated TOTP token
-
   return {
-    qrCode,
+    otpauthURL, // Send this to the frontend
     manualKey: secret.base32,
-    token, // Include the token in the return value
+    token,
   };
 }
+
+
 
 function isValidBase32(str) {
   const base32Regex = /^[A-Z2-7]*$/;
