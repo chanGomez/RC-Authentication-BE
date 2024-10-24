@@ -8,7 +8,10 @@ async function registerTOTP(email) {
 
   // Validate the Base32 secret before storing
   if (!isValidBase32(secret.base32)) {
-    throw new Error("Generated TOTP secret is not valid Base32.");
+    return {
+      status: false,
+      message: "Generated TOTP secret is not valid Base32.",
+    };
   }
 
   const updatedSecret = await updateSecret(secret.base32, email);
@@ -78,6 +81,5 @@ async function validateTOTP(email, token) {
     return { message: "TOTP validation failed", error: err };
   }
 }
-
 
 module.exports = { validateTOTP, registerTOTP };

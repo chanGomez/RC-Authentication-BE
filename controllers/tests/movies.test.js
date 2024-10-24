@@ -22,7 +22,7 @@ describe("GET /cookie-token", () => {
       .set("Cookie", [`token=${validToken}`]); // Set the cookie header with valid JWT
 
     expect(response.statusCode).toBe(200);
-    // expect(response.text).toBe("Token verified through cookies!!");
+    expect(response.text).toBe("Token verified through cookies!!");
   });
 
   it("should return 403 when no token is provided", async () => {
