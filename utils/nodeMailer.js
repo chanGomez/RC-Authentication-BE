@@ -1,20 +1,25 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.ethereal.email",
+  service: "gmail",
+  host: "smtp.gmail.email",
   port: 587,
   secure: false,
   auth: {
-    user: "delfina.jacobson@ethereal.email",
-    pass: "m9VPxMVnGDzsV7JKSX",
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
 function createResetPasswordEmail(email, resetUrl) {
   return {
-    from: "delfina.jacobson@ethereal.email",
+    from: {
+      name: "authentication app",
+      address: process.env.EMAIL_USER
+    },
     to: email,
     subject: "Password Reset Request",
+    text: "Reset password email",
     html: `
         <p>You requested a password reset</p>
         <p>Click this <a href="${resetUrl}">link</a> to reset your password</p>
@@ -26,9 +31,13 @@ function createResetPasswordEmail(email, resetUrl) {
 
 function lockedOutEmail(email) {
   return {
-    from: "delfina.jacobson@ethereal.email",
+    from: {
+      name: "authentication app",
+      address: process.env.EMAIL_USER,
+    },
     to: email,
     subject: "Someone tried to login to your account.",
+    text: "Multiple failed log in attempts.",
     html: `
         <p>There were multiple failed login attempts to your account.</p>
         <p>If this was not you, please reset your password immediately.</p>
@@ -39,9 +48,13 @@ function lockedOutEmail(email) {
 
 function newBrowserAlert(email) {
   return {
-    from: "delfina.jacobson@ethereal.email",
+    from: {
+      name: "authentication app",
+      address: process.env.EMAIL_USER,
+    },
     to: email,
     subject: "Someone tried to login to your account.",
+    text: "Unknown IP address, account logged in at another location.",
     html: `
         <p>Your account was logged in from a new IP address. Was this you?</p>
         <p>If this was not you, please reset your password immediately.</p>

@@ -15,24 +15,24 @@ const checkNewLoginByIP = async (req, res, next) => {
       return res.status(400).json({ message: "Email is not registered." });
     }
 
-    const geo = geoip.lookup(ipAddress);
-    const country = geo && geo.country ? geo.country : null;
-    const ipInfo = `${ipAddress}|${country || "unknown"}`;
+    // const geo = geoip.lookup(ipAddress);
+    // const country = geo && geo.country ? geo.country : null;
+    // const ipInfo = `${ipAddress}|${country || "unknown"}`;
 
     const query = "SELECT ip_address FROM sessions_by_ip WHERE userId = $1";
     const result = await db.query(query, [user.id]);
-    console.log(result);
+    console.log("line 24,", result);
 
     // First time login, save IP address
-    if (!result) {
+    if (result) {
       const insertQuery =
         "INSERT INTO sessions_by_ip (userId, ip_address) VALUES ($1, $2)";
-      await db.query(insertQuery, [user.id, ipInfo]);
+      await db.query(insertQuery, [user.id, ipAddress]);
       return next();
     }
 
-    // Check for new IP address
-    if (!result.some((res) => res.ip_address === ipInfo)) {
+    // Check if the IP address is new
+    if (!result.some((res) => res.ip_address === ipAddress)) {
       // Check if last login was recent (e.g., within 24 hours)
       //This is a cool down period before sending another "new IP" email alert to only send one alert per day for the same user
       const recentLoginQuery =
@@ -51,7 +51,7 @@ const checkNewLoginByIP = async (req, res, next) => {
 
       const insertQuery =
         "INSERT INTO sessions_by_ip (userId, ip_address) VALUES ($1, $2)";
-      await db.query(insertQuery, [user.id, ipInfo]);
+      await db.query(insertQuery, [user.id, ipAddress]);
     }
 
     next();
