@@ -60,7 +60,7 @@ async function validateTOTP(email, token) {
       secret: user.totp_secret,
       encoding: "base32",
       token: token,
-      window: 2, // Tolerance for time drift
+      window: 5, // Tolerance for time drift
       algorithm: "sha1", // Ensure this matches your generation algorithm
     });
 
