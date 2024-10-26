@@ -23,6 +23,12 @@ router.post("/forgot-password", async (req, res) => {
   try {
     const foundUser = await getUserByEmail(email);
 
+    if (foundUser.name == "QueryResultError") {
+      res.status(401).json({
+        message: "Email not registered",
+      });
+    }
+
     //create reset token
     const resetToken = crypto.randomBytes(20).toString("hex");
     const resetTokenExpiry = new Date(Date.now() + 900000);

@@ -9,7 +9,7 @@ const loginRateLimiter = async (req, res, next) => {
   // Get the number of login attempts from Redis
   const attempts = (await redisClient.get(loginKey)) || 0;
 
-  if (attempts >= 2) {
+  if (attempts >= 4) {
     return res.status(429).json({
       message: "Too many login attempts, please try again after 1 minute.",
     });
