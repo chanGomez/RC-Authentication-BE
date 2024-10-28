@@ -13,12 +13,10 @@ const verifyTokenFromCookies = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("line 43:", decoded)
 
     let redisToken;
     try {
       redisToken = await redisClient.get(`session_token:${decoded.userId}`);
-    console.log("line 48:", redisToken);
 
     } catch (err) {
       return res
@@ -28,7 +26,7 @@ const verifyTokenFromCookies = async (req, res, next) => {
             "Internal server error while accessing Redis for session token",
         });
     }
-    console.log("line 58:", redisToken);
+    
     if (!redisToken) {
       return res.status(401).json({ message: "Session expired or token invalid" });
     }

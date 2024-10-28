@@ -30,7 +30,6 @@ router.post(
   validateUsername,
   async (req, res) => {
     const { username, email, password } = req.body;
-    console.log(req.body);
 
     try {
       //check if user already exists
@@ -70,9 +69,6 @@ router.post("/enable2fa", async (req, res) => {
 
     // Generate TOTP and save Secret for the user
     const { qrCode, otpauthURL, manualKey, token } = await registerTOTP(email);
-    console.log("enable user qrcode info: ", otpauthURL, manualKey, token);
-    console.log("qrcode ", qrCode);
-
 
     res.status(201).json({
       message: "User registered, QR code created",
@@ -99,7 +95,6 @@ router.post(
       req.headers["x-forwarded-for"]?.split(",")[0] ||
       req.socket.remoteAddress ||
       req.ip;
-    console.log(ipAddress);
 
     if (!ipAddress) {
       return res
@@ -111,7 +106,6 @@ router.post(
       const user = await getUserByEmail(email);
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
-      console.log("password", isPasswordValid);
 
       if (!isPasswordValid) {
         //tracking failed attempts by user and IP address
@@ -137,7 +131,6 @@ router.post(
 
 router.post("/verify2fa", loginRateLimiter, async (req, res) => {
   const { email, totp_token } = req.body;
-  console.log("body", req.body);
 
   try {
     const user = await getUserByEmail(email);
@@ -173,7 +166,6 @@ router.post("/verify2fa", loginRateLimiter, async (req, res) => {
 
 router.post("/logout", verifyTokenFromCookies, async (req, res) => {
   const token = req.cookies.authToken;
-  console.log(token);
 
   if (!token) {
     return res.status(400).json({ message: "No token provided" });
@@ -205,7 +197,6 @@ router.get("/find-email", async (req, res) => {
   const { email } = req.body;
   try {
     const foundUser = await getUserByEmail(email);
-    console.log(foundUser.id);
 
     res.status(200).json(foundUser);
   } catch (error) {

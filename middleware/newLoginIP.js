@@ -15,13 +15,13 @@ const checkNewLoginByIP = async (req, res, next) => {
       return res.status(400).json({ message: "Email is not registered." });
     }
 
+    //----usage of geoip to ge the country of the ip for extra measures
     // const geo = geoip.lookup(ipAddress);
     // const country = geo && geo.country ? geo.country : null;
     // const ipInfo = `${ipAddress}|${country || "unknown"}`;
 
     const query = "SELECT ip_address FROM sessions_by_ip WHERE userId = $1";
     const result = await db.query(query, [user.id]);
-    console.log("line 24,", result);
 
     // First time login, save IP address
     if (result) {

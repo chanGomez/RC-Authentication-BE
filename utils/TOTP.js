@@ -26,7 +26,6 @@ async function registerTOTP(email) {
   const otpauthURL = `otpauth://totp/${issuer}:${email}?secret=${secret.base32}&issuer=${issuer}`;
 
   const qrCode = await QRCode.toDataURL(otpauthURL);
-  console.log("QR Code URL: ", qrCode);
 
   // Generate a TOTP token for the user
   const token = speakeasy.totp({
@@ -34,7 +33,6 @@ async function registerTOTP(email) {
     encoding: "base32",
   });
 
-  console.log("Generated TOTP Token:", token, ",manual key:", secret.base32); // Log the generated TOTP token
 
   return {
     qrCode,
@@ -72,12 +70,9 @@ async function validateTOTP(email, token) {
       encoding: "base32",
     });
 
-    console.log("Testing generated TOTP Token (on backend):", testingToken);
-    console.log("Validation result:", isValid);
 
     return isValid;
   } catch (err) {
-    console.log("Error during TOTP validation:", err);
     return { message: "TOTP validation failed", error: err };
   }
 }
