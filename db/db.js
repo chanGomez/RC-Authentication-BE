@@ -14,8 +14,6 @@ const db = pgp(cn);
 
 db.connect()
   .then((obj) => {
-    // const serverVersion = obj.client.serverVersion;
-    // console.log("Server version: " + serverVersion);
     if ((process.env.NODE_ENV !== "test")) {
       console.log("postgres connection established");
     }

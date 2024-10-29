@@ -5,7 +5,9 @@ const MAX_FAILED_ATTEMPTS = 5;
 const BLOCK_DURATION = 900;
 
 const verifyTokenFromCookies = async (req, res, next) => {
-  const token = req.cookies.token; 
+  const token = req.cookies.token;
+  const ipAddress =
+    req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
 
   if (!token) {
     return res.status(401).json({ message: "No token provided" });
@@ -17,18 +19,17 @@ const verifyTokenFromCookies = async (req, res, next) => {
     let redisToken;
     try {
       redisToken = await redisClient.get(`session_token:${decoded.userId}`);
-
     } catch (err) {
-      return res
-        .status(500)
-        .json({
-          message:
-            "Internal server error while accessing Redis for session token",
-        });
+      return res.status(500).json({
+        message:
+          "Internal server error while accessing Redis for session token",
+      });
     }
-    
+
     if (!redisToken) {
-      return res.status(401).json({ message: "Session expired or token invalid" });
+      return res
+        .status(401)
+        .json({ message: "Session expired or token invalid" });
     }
 
     // Reset failed attempts for this IP on successful verification
@@ -72,7 +73,6 @@ const verifyTokenFromCookies = async (req, res, next) => {
 //     next();
 //   });
 // };
-
 
 module.exports = {
   verifyTokenFromCookies,
