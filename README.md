@@ -12,13 +12,18 @@ A full-stack authentication project that includes robust security features like 
 5. [Endpoints](#endpoints)
 6. [Testing](#testing)
 
-### Features
+🎯 ### Features
 - JWT Authentication
 - Session management with Redis
 - MFA using TOTP and QR codes
 - Secure password reset via email
 - Rate limiting to mitigate brute-force attacks
-- Cypress E2E testing
+
+🧠 ### Process
+#### JWT Authentication
+For this feature I made a middleware function for protected routes such as get-movies route. The funciton retrives a token from the users headers and verifies the token with a jsonwebtoken package. The token gets verified verifies it using a jwt secret. If the token is valid, it confirms the session with Redis using the user's ID from the token. If any verification step fails, the middleware tracks failed attempts per IP in Redis, setting a rate limit to block the IP if too many failed attempts occur. If the session is valid, it resets the failed attempt count and proceeds to the next middleware.
+
+
 
 ### Technologies
 - **Node.js** (backend server)
