@@ -15,8 +15,6 @@ describe("POST /sign-up", () => {
       "User was successfully created in database."
     );
 
-    const email = "test@example.com";
-    const userInfo = await db.one("DELETE FROM users WHERE email=$1", email);
   });
 });
 

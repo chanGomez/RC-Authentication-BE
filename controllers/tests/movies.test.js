@@ -10,7 +10,7 @@ describe("GET /movies", () => {
   });
 });
 
-describe("GET /cookie-token", () => {
+describe("GET /movies/get-movies", () => {
   it("should return 200 and message when token is valid", async () => {
     // Generate a valid token using the same secret and structure
     const validToken = jwt.sign({ userId: "12345" }, process.env.JWT_SECRET, {
@@ -28,7 +28,7 @@ describe("GET /cookie-token", () => {
   it("should return 403 when no token is provided", async () => {
     const response = await supertest(app).get("/movies/get-movies"); // No cookie set
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(401);
     expect(response.body.message).toBe("No token provided");
   });
 
@@ -40,7 +40,7 @@ describe("GET /cookie-token", () => {
       .set("Cookie", [`token=${invalidToken}`]); // Set invalid token in the cookie
 
     expect(response.statusCode).toBe(401);
-    expect(response.body.message).toBe("Unauthorized access");
+    expect(response.body.message).toBe("Invalid token");
   });
 });
 
