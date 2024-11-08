@@ -65,6 +65,8 @@ router.post("/enable2fa", async (req, res) => {
   const { email } = req.body;
 
   try {
+    //Here is where you would check the user has 2fa enabled in db to make sure
+    //that if they did not enabled it then they should now
     const foundUserByEmail = await getUserByEmail(email);
 
     // Generate TOTP and save Secret for the user
@@ -75,7 +77,6 @@ router.post("/enable2fa", async (req, res) => {
       qrCode: qrCode,
       otpauthURL: otpauthURL,
       manualKey: manualKey, // Provide manual key as fallback
-      token: token, // Token for testing purposes
     });
   } catch (error) {
     res.status(500).json({

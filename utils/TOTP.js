@@ -38,7 +38,6 @@ async function registerTOTP(email) {
     qrCode,
     otpauthURL,
     manualKey: secret.base32,
-    token, // Include the token in the return value
   };
 }
 
@@ -64,12 +63,6 @@ async function validateTOTP(email, token) {
       window: 5, // Tolerance for time drift
       algorithm: "sha1", // Ensure this matches your generation algorithm
     });
-
-    const testingToken = speakeasy.totp({
-      secret: user.totp_secret,
-      encoding: "base32",
-    });
-
 
     return isValid;
   } catch (err) {
